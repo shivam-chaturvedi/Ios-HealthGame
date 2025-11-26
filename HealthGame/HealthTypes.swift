@@ -18,10 +18,14 @@ struct HealthTypes {
         HKObjectType.quantityType(forIdentifier: .walkingHeartRateAverage)!,
         HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
 
+        // Respiratory & EDA
+        HKObjectType.quantityType(forIdentifier: .respiratoryRate)!,
+
         // Body
         HKObjectType.quantityType(forIdentifier: .bodyMass)!,
         HKObjectType.quantityType(forIdentifier: .height)!,
         HKObjectType.quantityType(forIdentifier: .bodyMassIndex)!,
+        HKObjectType.quantityType(forIdentifier: .bodyTemperature)!,
 
         // Sleep
         HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
@@ -32,4 +36,15 @@ struct HealthTypes {
         // VO2 Max
         HKObjectType.quantityType(forIdentifier: .vo2Max)!
     ]
+
+    // Optional types gated by OS availability
+    static var optionalTypes: Set<HKObjectType> {
+        var types: Set<HKObjectType> = []
+        if #available(iOS 17.0, *) {
+            if let eda = HKObjectType.quantityType(forIdentifier: .electrodermalActivity) {
+                types.insert(eda)
+            }
+        }
+        return types
+    }
 }
