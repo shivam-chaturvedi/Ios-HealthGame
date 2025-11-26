@@ -17,13 +17,13 @@ class HealthDataViewModel: ObservableObject {
         requestAuthorization()
     }
 
-#if DEBUG
+    #if DEBUG
     init(sampleData: [HealthMetric]) {
         self.metrics = sampleData
         self.authorized = true
         self.lastSync = Date()
     }
-#endif
+    #endif
 
     func metrics(for category: HealthCategory) -> [HealthMetric] {
         metrics

@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import Charts
 
 struct MainAppView: View {
@@ -568,7 +569,7 @@ struct LifestyleScreen: View {
                         Text("Sleep Time").font(.caption).foregroundColor(.secondary)
                         DatePicker("", selection: Binding(
                             get: { vm.lifestyle.sleepStart },
-                            set: { vm.updateLifestyle { $0.sleepStart = $1 } }
+                            set: { newValue in vm.updateLifestyle { data in data.sleepStart = newValue } }
                         ), displayedComponents: .hourAndMinute)
                         .labelsHidden()
                     }
@@ -577,7 +578,7 @@ struct LifestyleScreen: View {
                         Text("Wake Time").font(.caption).foregroundColor(.secondary)
                         DatePicker("", selection: Binding(
                             get: { vm.lifestyle.wakeTime },
-                            set: { vm.updateLifestyle { $0.wakeTime = $1 } }
+                            set: { newValue in vm.updateLifestyle { data in data.wakeTime = newValue } }
                         ), displayedComponents: .hourAndMinute)
                         .labelsHidden()
                     }
@@ -602,7 +603,7 @@ struct LifestyleScreen: View {
                 SectionHeader(title: "Stimulants", subtitle: "Caffeine, nicotine, alcohol", icon: "cup.and.saucer.fill")
                 StepperRow(title: "Caffeine after 2PM", value: binding(\.caffeineMgAfter2pm), step: 20, format: "%.0f mg")
                 ToggleRow(title: "Nicotine today", isOn: binding(\.nicotine))
-                StepperRow(title: "Alcohol after 8PM", value: Binding(get: { Double(vm.lifestyle.alcoholUnitsAfter8pm) }, set: { vm.updateLifestyle { $0.alcoholUnitsAfter8pm = Int($1) } }), step: 1, format: "%.0f unit")
+                StepperRow(title: "Alcohol after 8PM", value: Binding(get: { Double(vm.lifestyle.alcoholUnitsAfter8pm) }, set: { newValue in vm.updateLifestyle { data in data.alcoholUnitsAfter8pm = Int(newValue) } }), step: 1, format: "%.0f unit")
             }
         case .activity:
             GlassCard {
@@ -641,9 +642,9 @@ struct LifestyleScreen: View {
         case .diet:
             GlassCard {
                 SectionHeader(title: "Diet & Hydration", subtitle: "Meals, sugar, water", icon: "fork.knife")
-                StepperRow(title: "Skipped meals", value: Binding(get: { Double(vm.lifestyle.skippedMeals) }, set: { vm.updateLifestyle { $0.skippedMeals = Int($1) } }), step: 1, format: "%.0f")
-                StepperRow(title: "Sugary items", value: Binding(get: { Double(vm.lifestyle.sugaryItems) }, set: { vm.updateLifestyle { $0.sugaryItems = Int($1) } }), step: 1, format: "%.0f")
-                StepperRow(title: "Water glasses", value: Binding(get: { Double(vm.lifestyle.waterGlasses) }, set: { vm.updateLifestyle { $0.waterGlasses = Int($1) } }), step: 1, format: "%.0f")
+                StepperRow(title: "Skipped meals", value: Binding(get: { Double(vm.lifestyle.skippedMeals) }, set: { newValue in vm.updateLifestyle { data in data.skippedMeals = Int(newValue) } }), step: 1, format: "%.0f")
+                StepperRow(title: "Sugary items", value: Binding(get: { Double(vm.lifestyle.sugaryItems) }, set: { newValue in vm.updateLifestyle { data in data.sugaryItems = Int(newValue) } }), step: 1, format: "%.0f")
+                StepperRow(title: "Water glasses", value: Binding(get: { Double(vm.lifestyle.waterGlasses) }, set: { newValue in vm.updateLifestyle { data in data.waterGlasses = Int(newValue) } }), step: 1, format: "%.0f")
             }
         }
     }
@@ -652,7 +653,7 @@ struct LifestyleScreen: View {
         let l = vm.lifestyle
         switch category {
         case .sleep:
-            return "\(timeString(l.sleepStart)) • \(l.sleepDebtHours, specifier: "%.1f")h debt"
+            return "\(timeString(l.sleepStart)) • \(String(format: "%.1f", l.sleepDebtHours))h debt"
         case .stimulants:
             return "\(Int(l.caffeineMgAfter2pm))mg caffeine"
         case .activity:
@@ -664,7 +665,7 @@ struct LifestyleScreen: View {
         case .cycle:
             return l.hasCycleData ? l.cyclePhase.rawValue : "Not tracking"
         case .screen:
-            return "\(l.daytimeScreenHours, specifier: "%.1f")h today"
+            return "\(String(format: "%.1f", l.daytimeScreenHours))h today"
         case .diet:
             return "\(l.waterGlasses) glasses water"
         }
@@ -909,7 +910,13 @@ struct CheckInScreen: View {
                 .foregroundColor(selection.wrappedValue == value ? .white : .primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
-                .background(selection.wrappedValue == value ? AppTheme.primaryGradient : Color.white.opacity(0.7))
+                .background {
+                    if selection.wrappedValue == value {
+                        AppTheme.primaryGradient
+                    } else {
+                        Color.white.opacity(0.7)
+                    }
+                }
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .shadow(color: AppTheme.shadow, radius: 4, x: 0, y: 4)
         }
@@ -1456,7 +1463,13 @@ struct SettingsView: View {
                         .foregroundColor(selection.wrappedValue == option ? .white : .primary)
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity)
-                        .background(selection.wrappedValue == option ? AppTheme.primaryGradient : Color.white.opacity(0.7))
+                        .background {
+                            if selection.wrappedValue == option {
+                                AppTheme.primaryGradient
+                            } else {
+                                Color.white.opacity(0.7)
+                            }
+                        }
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
             }

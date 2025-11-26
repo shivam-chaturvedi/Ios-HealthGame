@@ -1,8 +1,19 @@
 import Foundation
 import SwiftUI
+import Combine
+import HealthKit
 
 @MainActor
 final class AnxietyCalculatorViewModel: ObservableObject {
+    let objectWillChange = ObservableObjectPublisher()
+    private let healthStore = HKHealthStore()
+    private let calendar = Calendar.current
+    private let numberFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.maximumFractionDigits = 1
+        f.minimumFractionDigits = 0
+        return f
+    }()
     @Published var baseline: BaselineProfile
     @Published var physio: PhysioData
     @Published var lifestyle: LifestyleData
@@ -18,70 +29,67 @@ final class AnxietyCalculatorViewModel: ObservableObject {
 
     init() {
         let now = Date()
-        let calendar = Calendar.current
         self.baseline = BaselineProfile(
-            hr: Baseline(mean: 62, sd: 6, lastUpdated: now.addingTimeInterval(-3600)),
-            hrv: Baseline(mean: 55, sd: 12, lastUpdated: now.addingTimeInterval(-3600)),
-            rr: Baseline(mean: 14, sd: 2, lastUpdated: now.addingTimeInterval(-3600)),
-            eda: Baseline(mean: 1.2, sd: 0.6, lastUpdated: now.addingTimeInterval(-3600)),
-            temp: Baseline(mean: 0, sd: 0.6, lastUpdated: now.addingTimeInterval(-3600))
+            hr: Baseline(mean: 0, sd: 1, lastUpdated: now),
+            hrv: Baseline(mean: 0, sd: 1, lastUpdated: now),
+            rr: Baseline(mean: 0, sd: 1, lastUpdated: now),
+            eda: Baseline(mean: 0, sd: 1, lastUpdated: now),
+            temp: Baseline(mean: 0, sd: 1, lastUpdated: now)
         )
 
         self.physio = PhysioData(
-            hr: 74,
-            hrv: 48,
-            rr: 15,
-            edaPeaksPerMin: 2.0,
-            skinTempDelta: -0.6,
-            motionScore: 0.2,
+            hr: 0,
+            hrv: 0,
+            rr: 0,
+            edaPeaksPerMin: 0,
+            skinTempDelta: 0,
+            motionScore: 0,
             isExercising: false,
-            signalQuality: .good,
+            signalQuality: .ok,
             timestamp: now
         )
 
         self.lifestyle = LifestyleData(
-            sleepStart: calendar.date(from: DateComponents(hour: 23, minute: 30)) ?? now,
-            wakeTime: calendar.date(from: DateComponents(hour: 7, minute: 0)) ?? now,
-            sleepDebtHours: 1,
-            sleepEfficiency: 85,
-            bedtimeShiftMinutes: 60,
-            caffeineMgAfter2pm: 120,
+            sleepStart: now,
+            wakeTime: now,
+            sleepDebtHours: 0,
+            sleepEfficiency: 0,
+            bedtimeShiftMinutes: 0,
+            caffeineMgAfter2pm: 0,
             nicotine: false,
-            alcoholUnitsAfter8pm: 1,
-            activityMinutes: 35,
-            vigorousMinutes: 20,
-            workloadHours: 7,
+            alcoholUnitsAfter8pm: 0,
+            activityMinutes: 0,
+            vigorousMinutes: 0,
+            workloadHours: 0,
             isExamDay: false,
-            selfCareMinutes: 18,
-            hasCycleData: true,
-            cyclePhase: .luteal,
-            post11pmScreenMinutes: 40,
-            daytimeScreenHours: 6.5,
+            selfCareMinutes: 0,
+            hasCycleData: false,
+            cyclePhase: .none,
+            post11pmScreenMinutes: 0,
+            daytimeScreenHours: 0,
             skippedMeals: 0,
-            sugaryItems: 1,
-            waterGlasses: 6
+            sugaryItems: 0,
+            waterGlasses: 0
         )
 
         self.checkin = CheckinData(
-            gad2Score: 3,
-            gadUpdated: now.addingTimeInterval(-2 * 3600),
-            mood: 2,
-            moodUpdated: now.addingTimeInterval(-1 * 3600),
-            anxietyMoments: [
-                AnxietyMoment(note: "Felt anxious before meeting", timestamp: now.addingTimeInterval(-7200), intensity: 0.6)
-            ]
+            gad2Score: 0,
+            gadUpdated: now,
+            mood: 0,
+            moodUpdated: now,
+            anxietyMoments: []
         )
 
-        self.trend = Self.makeTrend()
-        self.weekly = Self.makeWeekly()
+        self.trend = []
+        self.weekly = []
         self.interventions = Self.makeInterventions()
         self.contributors = []
-        self.calibrationStart = now.addingTimeInterval(-1 * 24 * 3600)
-        self.restWindows = [now.addingTimeInterval(-1800)]
+        self.calibrationStart = now
+        self.restWindows = []
 
         let initialScore = AnxietyScore(aps: 0, lrs: 0, cs: 0, stateEstimate: 0, finalScore: 0, confidence: .medium, alpha: 0.5, checkinWeight: 0.5)
         self.score = initialScore
-        recompute()
+        requestAuthorization()
     }
 
     var calibrationEnd: Date {
@@ -130,17 +138,7 @@ final class AnxietyCalculatorViewModel: ObservableObject {
     }
 
     func simulateLiveTick() {
-        physio.timestamp = Date()
-        physio.hr += Double.random(in: -2...3)
-        physio.hrv += Double.random(in: -4...4)
-        physio.rr += Double.random(in: -0.4...0.6)
-        physio.edaPeaksPerMin = max(0, physio.edaPeaksPerMin + Double.random(in: -0.5...0.8))
-        physio.skinTempDelta += Double.random(in: -0.1...0.1)
-        physio.motionScore = min(1, max(0, physio.motionScore + Double.random(in: -0.1...0.15)))
-        if physio.motionScore < 0.2 {
-            recordRestWindow()
-        }
-        recompute()
+        fetchFromHealthKit()
     }
 }
 
@@ -172,14 +170,14 @@ private extension AnxietyCalculatorViewModel {
 
         // Lifestyle Weights from spec
         let lrs =
-        0.30 * sleep +
-        0.20 * stimulants +
-        0.10 * activity +
-        0.15 * context +
-        0.05 * selfCare +
-        0.05 * cycle +
-        0.10 * screen +
-        0.05 * diet
+            0.30 * sleep +
+            0.20 * stimulants +
+            0.10 * activity +
+            0.15 * context +
+            0.05 * selfCare +
+            0.05 * cycle +
+            0.10 * screen +
+            0.05 * diet
 
         return lrs
     }
@@ -193,12 +191,12 @@ private extension AnxietyCalculatorViewModel {
         let motionRisk = motionRiskScore()
 
         let aps =
-        0.20 * hrRisk +
-        0.20 * hrvRisk +
-        0.15 * rrRisk +
-        0.20 * edaRisk +
-        0.10 * tempRisk +
-        0.15 * motionRisk
+            0.20 * hrRisk +
+            0.20 * hrvRisk +
+            0.15 * rrRisk +
+            0.20 * edaRisk +
+            0.10 * tempRisk +
+            0.15 * motionRisk
 
         let cleanSignals = [hrRisk, hrvRisk, rrRisk, edaRisk, tempRisk, motionRisk].filter { $0 > 0 }
         let qualityScale = cleanSignals.count < 2 ? 0.3 : 1.0
@@ -267,11 +265,7 @@ private extension AnxietyCalculatorViewModel {
     func sleepRisk() -> Double {
         let debt = lifestyle.sleepDebtHours
         let base: Double
-        if debt <= 0 { base = 20 }
-        else if debt <= 1 { base = 40 }
-        else if debt <= 2 { base = 60 }
-        else if debt <= 3 { base = 80 }
-        else { base = 95 }
+        if debt <= 0 { base = 20 } else if debt <= 1 { base = 40 } else if debt <= 2 { base = 60 } else if debt <= 3 { base = 80 } else { base = 95 }
 
         var total = base
         if lifestyle.sleepEfficiency < 80 { total += 10 }
@@ -282,10 +276,7 @@ private extension AnxietyCalculatorViewModel {
     func stimulantRisk() -> Double {
         let caffeine = lifestyle.caffeineMgAfter2pm
         let caffeineScore: Double
-        if caffeine <= 0 { caffeineScore = 20 }
-        else if caffeine <= 100 { caffeineScore = 40 }
-        else if caffeine <= 200 { caffeineScore = 65 }
-        else { caffeineScore = 85 }
+        if caffeine <= 0 { caffeineScore = 20 } else if caffeine <= 100 { caffeineScore = 40 } else if caffeine <= 200 { caffeineScore = 65 } else { caffeineScore = 85 }
 
         var risk = caffeineScore
         if lifestyle.nicotine { risk = max(risk, 80) }
@@ -314,11 +305,11 @@ private extension AnxietyCalculatorViewModel {
     }
 
     func contextRisk() -> Double {
-        var risk = lifestyle.isExamDay ? 85 : 45
+        var risk: Double = lifestyle.isExamDay ? 85.0 : 45.0
         if lifestyle.workloadHours > 8 {
-            risk += 10
+            risk += 10.0
         }
-        return min(100, risk)
+        return min(100.0, risk)
     }
 
     func selfCareRisk() -> Double {
@@ -326,8 +317,6 @@ private extension AnxietyCalculatorViewModel {
         switch lifestyle.selfCareMinutes {
         case ..<1:
             risk += 5
-        case 0...10:
-            risk += 0
         case 10...15:
             risk -= 5
         case 20...30:
@@ -355,10 +344,7 @@ private extension AnxietyCalculatorViewModel {
     func screenRisk() -> Double {
         let minutes = lifestyle.post11pmScreenMinutes
         let lateUse: Double
-        if minutes <= 0 { lateUse = 20 }
-        else if minutes <= 30 { lateUse = 50 }
-        else if minutes <= 60 { lateUse = 70 }
-        else { lateUse = 85 }
+        if minutes <= 0 { lateUse = 20 } else if minutes <= 30 { lateUse = 50 } else if minutes <= 60 { lateUse = 70 } else { lateUse = 85 }
 
         var risk = lateUse
         if lifestyle.daytimeScreenHours > 6 {
@@ -516,40 +502,8 @@ private extension AnxietyCalculatorViewModel {
     }
 }
 
-// MARK: - Mock data
+// MARK: - Interventions
 private extension AnxietyCalculatorViewModel {
-    static func makeTrend() -> [TrendPoint] {
-        [
-            TrendPoint(label: "−11h", value: 48),
-            TrendPoint(label: "−10h", value: 50),
-            TrendPoint(label: "−9h", value: 52),
-            TrendPoint(label: "−8h", value: 56),
-            TrendPoint(label: "−7h", value: 58),
-            TrendPoint(label: "−6h", value: 61),
-            TrendPoint(label: "−5h", value: 59),
-            TrendPoint(label: "−4h", value: 57),
-            TrendPoint(label: "−3h", value: 55),
-            TrendPoint(label: "−2h", value: 54),
-            TrendPoint(label: "−1h", value: 53),
-            TrendPoint(label: "now", value: 51)
-        ]
-    }
-
-    static func makeWeekly() -> [DailyScore] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        return (0..<7).map { offset in
-            DailyScore(
-                date: calendar.date(byAdding: .day, value: -offset, to: today) ?? today,
-                score: Double.random(in: 42...68),
-                topFactor: ["sleep", "screen", "stimulants", "activity"].randomElement() ?? "sleep",
-                physiology: Double.random(in: 40...70),
-                lifestyle: Double.random(in: 38...65),
-                checkin: Double.random(in: 30...70)
-            )
-        }.sorted { $0.date < $1.date }
-    }
-
     static func makeInterventions() -> [Intervention] {
         [
             Intervention(title: "4-7-8 Breathing", subtitle: "Inhale 4s, hold 7s, exhale 8s", duration: "5 min", minutes: 5, rating: 4.2, icon: "wind", category: "Breathwork", effect: "Calms sympathetic arousal", quickRelief: true),
@@ -560,5 +514,93 @@ private extension AnxietyCalculatorViewModel {
             Intervention(title: "Calming Soundscape", subtitle: "Lo-fi or binaural beats", duration: "10 min", minutes: 10, rating: 3.9, icon: "music.quarternote.3", category: "Audio", effect: "Lower arousal through tempo", quickRelief: false),
             Intervention(title: "Pro Tip", subtitle: "Practice daily breathing reduces anxiety baseline", duration: "Tip", minutes: 1, rating: 4.6, icon: "star.circle.fill", category: "Tip", effect: "Consistent practice improves resilience", quickRelief: false)
         ]
+    }
+}
+
+// MARK: - HealthKit fetch
+extension AnxietyCalculatorViewModel {
+    func requestAuthorization() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let types = HealthTypes.allTypes.union(HealthTypes.optionalTypes)
+        healthStore.requestAuthorization(toShare: nil, read: types) { [weak self] success, _ in
+            guard success else { return }
+            Task { @MainActor in
+                self?.fetchFromHealthKit()
+            }
+        }
+    }
+
+    func fetchFromHealthKit() {
+        fetchLatestQuantity(.heartRate, unit: HKUnit(from: "count/min")) { value in
+            self.physio.hr = value
+        }
+        fetchLatestQuantity(.heartRateVariabilitySDNN, unit: HKUnit.secondUnit(with: .milli)) { value in
+            self.physio.hrv = value
+        }
+        fetchLatestQuantity(.respiratoryRate, unit: HKUnit.count().unitDivided(by: .minute())) { value in
+            self.physio.rr = value
+        }
+        if #available(iOS 17.0, *) {
+            fetchLatestQuantity(.electrodermalActivity, unit: HKUnit.siemenUnit(with: .milli)) { value in
+                self.physio.edaPeaksPerMin = value
+            }
+        }
+        fetchLatestQuantity(.bodyTemperature, unit: HKUnit.degreeCelsius()) { value in
+            self.physio.skinTempDelta = value
+        }
+        fetchSteps()
+        fetchSleep()
+        physio.signalQuality = .good
+        recompute()
+    }
+
+    private func fetchLatestQuantity(_ id: HKQuantityTypeIdentifier, unit: HKUnit, assign: @escaping (Double) -> Void) {
+        guard let type = HKQuantityType.quantityType(forIdentifier: id) else { return }
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        let query = HKSampleQuery(sampleType: type, predicate: nil, limit: 1, sortDescriptors: [sort]) { [weak self] _, samples, _ in
+            guard let self, let sample = samples?.first as? HKQuantitySample else { return }
+            let value = sample.quantity.doubleValue(for: unit)
+            DispatchQueue.main.async {
+                assign(value)
+                self.recordRestWindow()
+                self.recompute()
+            }
+        }
+        healthStore.execute(query)
+    }
+
+    private func fetchSteps() {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return }
+        let start = calendar.startOfDay(for: Date())
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: Date(), options: .strictStartDate)
+        let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, stats, _ in
+            guard let self else { return }
+            let steps = stats?.sumQuantity()?.doubleValue(for: .count()) ?? 0
+            DispatchQueue.main.async {
+                self.lifestyle.activityMinutes = steps / 100.0
+                self.physio.motionScore = min(1, steps / 10000.0)
+                self.recompute()
+            }
+        }
+        healthStore.execute(query)
+    }
+
+    private func fetchSleep() {
+        guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
+        let predicate = HKQuery.predicateForSamples(withStart: calendar.date(byAdding: .day, value: -1, to: Date()), end: Date(), options: .strictStartDate)
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: 1, sortDescriptors: [sort]) { [weak self] _, samples, _ in
+            guard let self else { return }
+            guard let sample = samples?.first as? HKCategorySample else { return }
+            let duration = sample.endDate.timeIntervalSince(sample.startDate) / 3600
+            DispatchQueue.main.async {
+                self.lifestyle.sleepEfficiency = 85
+                self.lifestyle.sleepDebtHours = max(0, 8 - duration)
+                self.lifestyle.sleepStart = sample.startDate
+                self.lifestyle.wakeTime = sample.endDate
+                self.recompute()
+            }
+        }
+        healthStore.execute(query)
     }
 }
