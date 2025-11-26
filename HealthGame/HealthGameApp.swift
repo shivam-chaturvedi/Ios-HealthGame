@@ -14,4 +14,5 @@ struct HealthGameApp: App {
             ContentView()
         }
     }
+    
 }
