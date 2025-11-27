@@ -3,59 +3,34 @@
 	archiveVersion = 1;
 	classes = {
 	};
-objectVersion = 77;
-objects = {
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		05C82F132ED81E6E00C88DA9 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 05C82F122ED81E6E00C88DA9 /* GoogleSignIn */; };
+		05C82F152ED81E6E00C88DA9 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 05C82F142ED81E6E00C88DA9 /* GoogleSignInSwift */; };
+		05C82F1F2ED8265800C88DA9 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 05C82F1E2ED8265800C88DA9 /* Supabase */; };
+/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		055DE71F2ED6BF980045029D /* HealthGame.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HealthGame.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AAA000012EDF400000000001 /* HealthGameApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthGameApp.swift; sourceTree = "<group>"; };
-		AAA000022EDF400000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AAA000032EDF400000000001 /* AnxietyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnxietyModels.swift; sourceTree = "<group>"; };
-		AAA000042EDF400000000001 /* AnxietyCalculatorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnxietyCalculatorViewModel.swift; sourceTree = "<group>"; };
-		AAA000052EDF400000000001 /* MainScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScreens.swift; sourceTree = "<group>"; };
-		AAA000062EDF400000000001 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
-		AAA000072EDF400000000001 /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIComponents.swift; sourceTree = "<group>"; };
-		AAA000082EDF400000000001 /* HealthDataViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthDataViewModel.swift; sourceTree = "<group>"; };
-		AAA000092EDF400000000001 /* HealthMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthMetric.swift; sourceTree = "<group>"; };
-		AAA0000A2EDF400000000001 /* HealthTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTypes.swift; sourceTree = "<group>"; };
-		AAA0000B2EDF400000000001 /* PhysioLiveViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysioLiveViewModel.swift; sourceTree = "<group>"; };
-		AAA0000C2EDF400000000001 /* AddMomentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMomentSheet.swift; sourceTree = "<group>"; };
-		AAA0000D2EDF400000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXBuildFile section */
-		AAA000202EDF400200000001 /* HealthGameApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA000012EDF400000000001 /* HealthGameApp.swift */; };
-		AAA000212EDF400200000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA000022EDF400000000001 /* ContentView.swift */; };
-		AAA000222EDF400200000001 /* AnxietyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA000032EDF400000000001 /* AnxietyModels.swift */; };
-		AAA000232EDF400200000001 /* AnxietyCalculatorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA000042EDF400000000001 /* AnxietyCalculatorViewModel.swift */; };
-		AAA000242EDF400200000001 /* MainScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA000052EDF400000000001 /* MainScreens.swift */; };
-		AAA000252EDF400200000001 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA000062EDF400000000001 /* OnboardingFlow.swift */; };
-		AAA000262EDF400200000001 /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA000072EDF400000000001 /* UIComponents.swift */; };
-		AAA000272EDF400200000001 /* HealthDataViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA000082EDF400000000001 /* HealthDataViewModel.swift */; };
-		AAA000282EDF400200000001 /* HealthMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA000092EDF400000000001 /* HealthMetric.swift */; };
-		AAA000292EDF400200000001 /* HealthTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000A2EDF400000000001 /* HealthTypes.swift */; };
-		AAA0002A2EDF400200000001 /* PhysioLiveViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000B2EDF400000000001 /* PhysioLiveViewModel.swift */; };
-		AAA0002B2EDF400200000001 /* AddMomentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000C2EDF400000000001 /* AddMomentSheet.swift */; };
-		AAA0002C2EDF400200000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AAA0000D2EDF400000000001 /* Assets.xcassets */; };
-/* End PBXBuildFile section */
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		05C82F0E2ED818C600C88DA9 /* Exceptions for "HealthGame" folder in "HealthGame" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 055DE71E2ED6BF980045029D /* HealthGame */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		055DE7212ED6BF980045029D /* HealthGame */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			children = (
-				AAA000012EDF400000000001 /* HealthGameApp.swift */,
-				AAA000022EDF400000000001 /* ContentView.swift */,
-				AAA000032EDF400000000001 /* AnxietyModels.swift */,
-				AAA000042EDF400000000001 /* AnxietyCalculatorViewModel.swift */,
-				AAA000052EDF400000000001 /* MainScreens.swift */,
-				AAA000062EDF400000000001 /* OnboardingFlow.swift */,
-				AAA000072EDF400000000001 /* UIComponents.swift */,
-				AAA000082EDF400000000001 /* HealthDataViewModel.swift */,
-				AAA000092EDF400000000001 /* HealthMetric.swift */,
-				AAA0000A2EDF400000000001 /* HealthTypes.swift */,
-				AAA0000B2EDF400000000001 /* PhysioLiveViewModel.swift */,
-				AAA0000C2EDF400000000001 /* AddMomentSheet.swift */,
-				AAA0000D2EDF400000000001 /* Assets.xcassets */,
+			exceptions = (
+				05C82F0E2ED818C600C88DA9 /* Exceptions for "HealthGame" folder in "HealthGame" target */,
 			);
 			path = HealthGame;
 			sourceTree = "<group>";
@@ -67,6 +42,9 @@ objects = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				05C82F1F2ED8265800C88DA9 /* Supabase in Frameworks */,
+				05C82F132ED81E6E00C88DA9 /* GoogleSignIn in Frameworks */,
+				05C82F152ED81E6E00C88DA9 /* GoogleSignInSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,6 +87,9 @@ objects = {
 			);
 			name = HealthGame;
 			packageProductDependencies = (
+				05C82F122ED81E6E00C88DA9 /* GoogleSignIn */,
+				05C82F142ED81E6E00C88DA9 /* GoogleSignInSwift */,
+				05C82F1E2ED8265800C88DA9 /* Supabase */,
 			);
 			productName = HealthGame;
 			productReference = 055DE71F2ED6BF980045029D /* HealthGame.app */;
@@ -138,6 +119,10 @@ objects = {
 			);
 			mainGroup = 055DE7162ED6BF980045029D;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				05C82F112ED81E6E00C88DA9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				05C82F1C2ED8265800C88DA9 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 055DE7202ED6BF980045029D /* Products */;
 			projectDirPath = "";
@@ -153,7 +138,6 @@ objects = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AAA0002C2EDF400200000001 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -164,18 +148,6 @@ objects = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AAA000202EDF400200000001 /* HealthGameApp.swift in Sources */,
-				AAA000212EDF400200000001 /* ContentView.swift in Sources */,
-				AAA000222EDF400200000001 /* AnxietyModels.swift in Sources */,
-				AAA000232EDF400200000001 /* AnxietyCalculatorViewModel.swift in Sources */,
-				AAA000242EDF400200000001 /* MainScreens.swift in Sources */,
-				AAA000252EDF400200000001 /* OnboardingFlow.swift in Sources */,
-				AAA000262EDF400200000001 /* UIComponents.swift in Sources */,
-				AAA000272EDF400200000001 /* HealthDataViewModel.swift in Sources */,
-				AAA000282EDF400200000001 /* HealthMetric.swift in Sources */,
-				AAA000292EDF400200000001 /* HealthTypes.swift in Sources */,
-				AAA0002A2EDF400200000001 /* PhysioLiveViewModel.swift in Sources */,
-				AAA0002B2EDF400200000001 /* AddMomentSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -314,6 +286,7 @@ objects = {
 				DEVELOPMENT_TEAM = D6T42397V9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HealthGame/Info.plist;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app needs access to read step count and health data.\nThis app needs access to read step count and health data.\nThis app needs access to read step count and health data.\nFor helath data reading ";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app needs access to update health data.\n";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -325,7 +298,7 @@ objects = {
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.athena.HealthGame;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shivam.AnxietyCalculator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -348,6 +321,7 @@ objects = {
 				DEVELOPMENT_TEAM = D6T42397V9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HealthGame/Info.plist;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app needs access to read step count and health data.\nThis app needs access to read step count and health data.\nThis app needs access to read step count and health data.\nFor helath data reading ";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app needs access to update health data.\n";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -359,7 +333,7 @@ objects = {
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.athena.HealthGame;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shivam.AnxietyCalculator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -393,6 +367,43 @@ objects = {
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		05C82F112ED81E6E00C88DA9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
+		05C82F1C2ED8265800C88DA9 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase-community/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		05C82F122ED81E6E00C88DA9 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 05C82F112ED81E6E00C88DA9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		05C82F142ED81E6E00C88DA9 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 05C82F112ED81E6E00C88DA9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		05C82F1E2ED8265800C88DA9 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 05C82F1C2ED8265800C88DA9 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 055DE7172ED6BF980045029D /* Project object */;
 }

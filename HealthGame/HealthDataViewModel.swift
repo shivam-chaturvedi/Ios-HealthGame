@@ -17,14 +17,6 @@ class HealthDataViewModel: ObservableObject {
         requestAuthorization()
     }
 
-    #if DEBUG
-    init(sampleData: [HealthMetric]) {
-        self.metrics = sampleData
-        self.authorized = true
-        self.lastSync = Date()
-    }
-    #endif
-
     func metrics(for category: HealthCategory) -> [HealthMetric] {
         metrics
             .filter { $0.category == category }
@@ -263,8 +255,6 @@ class HealthDataViewModel: ObservableObject {
         } else {
             metrics.append(metric)
         }
-
-        print("[HealthData] \(category.rawValue) • \(title): \(value) — \(detail)")
     }
 
     private func metricId(category: HealthCategory, title: String) -> String {
@@ -294,22 +284,6 @@ class HealthDataViewModel: ObservableObject {
         return formatter
     }()
 }
-
-#if DEBUG
-extension HealthDataViewModel {
-    static var preview: HealthDataViewModel {
-        HealthDataViewModel(sampleData: [
-            HealthMetric(id: "Activity-Steps", title: "Steps", value: "8,420", detail: "Today so far", category: .activity, systemImage: "figure.walk"),
-            HealthMetric(id: "Activity-Energy", title: "Active Energy", value: "560 kcal", detail: "Today so far", category: .activity, systemImage: "flame.fill"),
-            HealthMetric(id: "Heart-Rate", title: "Heart Rate", value: "76 bpm", detail: "Last reading: 9:40 AM", category: .heart, systemImage: "heart.fill"),
-            HealthMetric(id: "Heart-HRV", title: "HRV", value: "48 ms", detail: "Last reading: 8:15 AM", category: .heart, systemImage: "waveform.path.ecg"),
-            HealthMetric(id: "Sleep-Hours", title: "Sleep", value: "7.4 hrs", detail: "Ended at 6:45 AM", category: .sleep, systemImage: "moon.zzz.fill"),
-            HealthMetric(id: "Body-Weight", title: "Weight", value: "70.8 kg", detail: "Last reading: 7:10 AM", category: .body, systemImage: "scalemass"),
-            HealthMetric(id: "Workout-Last", title: "Last Workout", value: "42 min • 390 kcal • 6.2 km", detail: "Running • Today, 7:30 AM", category: .workouts, systemImage: "bolt.heart.fill")
-        ])
-    }
-}
-#endif
 
 private extension HKWorkoutActivityType {
     var displayName: String {

@@ -144,15 +144,19 @@ private extension OnboardingFlow {
                     Text(description).font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
-                Button {
-                    permissions[key]?.toggle()
-                } label: {
-                    Image(systemName: permissions[key] == true ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
-                        .foregroundColor(permissions[key] == true ? .green : .secondary)
-                }
+                Image(systemName: permissions[key] == true ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundColor(permissions[key] == true ? .green : .secondary)
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            permissions[key]?.toggle()
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(permissions[key] == true ? Color.green.opacity(0.4) : Color.clear, lineWidth: 2)
+        )
     }
 
     var concernStep: some View {
@@ -182,15 +186,19 @@ private extension OnboardingFlow {
                     Text(subtitle).font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
-                Button {
-                    selectedConcern = key
-                } label: {
-                    Image(systemName: selectedConcern == key ? "largecircle.fill.circle" : "circle")
-                        .font(.title3)
-                        .foregroundColor(selectedConcern == key ? .blue : .secondary)
-                }
+                Image(systemName: selectedConcern == key ? "largecircle.fill.circle" : "circle")
+                    .font(.title3)
+                    .foregroundColor(selectedConcern == key ? .blue : .secondary)
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedConcern = key
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(selectedConcern == key ? Color.blue.opacity(0.4) : Color.clear, lineWidth: 2)
+        )
     }
 
     var complete: some View {

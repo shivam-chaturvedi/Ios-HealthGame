@@ -7,6 +7,8 @@ import HealthKit
 final class AnxietyCalculatorViewModel: ObservableObject {
     let objectWillChange = ObservableObjectPublisher()
     @Published var hasHealthData = false
+    @Published var hasPhysioData = false
+    @Published var hasLifestyleData = false
     private let healthStore = HKHealthStore()
     private let calendar = Calendar.current
     private let numberFormatter: NumberFormatter = {
@@ -98,7 +100,7 @@ final class AnxietyCalculatorViewModel: ObservableObject {
     }
 
     func recompute() {
-        if !hasHealthData {
+        if !hasPhysioData && !hasLifestyleData {
             let zeroScore = AnxietyScore(aps: 0, lrs: 0, cs: 0, stateEstimate: 0, finalScore: 0, confidence: .low, alpha: 0, checkinWeight: 0)
             score = zeroScore
             contributors = []
@@ -442,6 +444,7 @@ private extension AnxietyCalculatorViewModel {
 // MARK: - Contributors + helpers
 private extension AnxietyCalculatorViewModel {
     func buildContributors(lrs: Double, aps: Double) -> [Contributor] {
+        if !hasPhysioData && !hasLifestyleData { return [] }
         var list: [Contributor] = []
 
         let lifestylePairs: [(String, Double)] = [
@@ -570,6 +573,7 @@ extension AnxietyCalculatorViewModel {
             let value = sample.quantity.doubleValue(for: unit)
             DispatchQueue.main.async {
                 self.hasHealthData = true
+                self.hasPhysioData = true
                 assign(value)
                 self.recordRestWindow()
                 self.recompute()
@@ -587,6 +591,7 @@ extension AnxietyCalculatorViewModel {
             let steps = stats?.sumQuantity()?.doubleValue(for: .count()) ?? 0
             DispatchQueue.main.async {
                 self.hasHealthData = true
+                self.hasLifestyleData = true
                 self.lifestyle.activityMinutes = steps / 100.0
                 self.physio.motionScore = min(1, steps / 10000.0)
                 self.recompute()
@@ -605,6 +610,7 @@ extension AnxietyCalculatorViewModel {
             let duration = sample.endDate.timeIntervalSince(sample.startDate) / 3600
             DispatchQueue.main.async {
                 self.hasHealthData = true
+                self.hasLifestyleData = true
                 self.lifestyle.sleepEfficiency = 0
                 self.lifestyle.sleepDebtHours = max(0, 8 - duration)
                 self.lifestyle.sleepStart = sample.startDate

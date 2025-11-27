@@ -40,6 +40,12 @@ struct MainAppView: View {
             }
             .tabItem { Label("Help", systemImage: "sparkles") }
             .tag(4)
+
+            NavigationStack {
+                AccountView()
+            }
+            .tabItem { Label("Account", systemImage: "person.crop.circle") }
+            .tag(5)
         }
         .tint(.blue)
     }
@@ -180,13 +186,19 @@ struct HomeDashboardView: View {
             HStack(spacing: 12) {
                 GlassCard {
                     HStack {
-                        VStack(alignment: .leading) {
-                            Text("Insights").font(.headline)
-                            Text("Weekly report").font(.caption).foregroundColor(.secondary)
+                        if vm.hasPhysioData || vm.hasLifestyleData {
+                            VStack(alignment: .leading) {
+                                Text("Insights").font(.headline)
+                                Text("Weekly report").font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("No data")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.secondary)
                     }
                 }
                 .onTapGesture { showInsights = true }
@@ -1375,9 +1387,12 @@ private struct BadgeView: View {
 // MARK: - Settings
 struct SettingsView: View {
     @EnvironmentObject var vm: AnxietyCalculatorViewModel
+    @AppStorage("google_logged_in") private var googleLoggedIn = false
+    @AppStorage("onboardingComplete") private var onboardingComplete = false
+    @AppStorage("auth_access_token") private var accessToken: String?
+    @AppStorage("auth_refresh_token") private var refreshToken: String?
     @State private var notificationsOn = true
     @State private var exportRequested = false
-    @State private var demoMode = false
     @State private var primaryConcern: String = "panic"
     @State private var alertFrequency: String = "low"
 
@@ -1458,6 +1473,14 @@ struct SettingsView: View {
                         settingsRow(icon: "lock.shield", title: "Privacy & Security", subtitle: "Manage your data")
                         Divider()
                         settingsRow(icon: "questionmark.circle", title: "Help & Support", subtitle: "FAQs and contact")
+                        Divider()
+                        settingsRow(icon: "rectangle.portrait.and.arrow.right", title: "Log out", subtitle: "Sign out") {
+                            googleLoggedIn = false
+                            onboardingComplete = false
+                            accessToken = nil
+                            refreshToken = nil
+                            Task { await SupabaseAuthService.shared.signOut() }
+                        }
                     }
 
                     GlassCard {

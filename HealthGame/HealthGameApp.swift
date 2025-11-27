@@ -2,17 +2,22 @@
 //  HealthGameApp.swift
 //  HealthGame
 //
-//  Created by Simran Kaur on 26/11/25.
-//
 
 import SwiftUI
+import GoogleSignIn
 
 @main
 struct HealthGameApp: App {
+    init() {
+        _ = SupabaseManager.shared
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
     }
-
 }
