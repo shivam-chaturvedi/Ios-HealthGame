@@ -275,14 +275,9 @@ private struct ContributorRow: View {
                 }
             }
             Spacer()
-            VStack(alignment: .trailing) {
-                Text("+\(Int(contributor.impact.rounded()))%")
-                    .fontWeight(.semibold)
-                    .foregroundColor(contributor.trend == .down ? .green : .red)
-                Text(contributor.trend.rawValue.capitalized)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
+            Label("Watch data", systemImage: "applewatch")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
         .padding(.vertical, 6)
     }
@@ -574,9 +569,16 @@ struct LifestyleScreen: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("\(Int(category.weight * 100))%")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    if vm.hasLifestyleData {
+                        Label("Apple Health", systemImage: "heart.fill")
+                            .labelStyle(.titleAndIcon)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Waiting for Apple Health")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                     Image(systemName: "chevron.right")
                         .foregroundColor(.secondary)
                         .font(.footnote)
@@ -596,38 +598,32 @@ struct LifestyleScreen: View {
         case .sleep:
             GlassCard {
                 SectionHeader(title: "Sleep Tracking", subtitle: "Schedule & debt", icon: "moon.zzz.fill")
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Sleep Time").font(.caption).foregroundColor(.secondary)
-                        DatePicker("", selection: Binding(
-                            get: { vm.lifestyle.sleepStart },
-                            set: { newValue in vm.updateLifestyle { data in data.sleepStart = newValue } }
-                        ), displayedComponents: .hourAndMinute)
-                        .labelsHidden()
+                if !vm.hasLifestyleData {
+                    Text("Waiting for Apple Health sleep data...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Sleep Time").font(.caption).foregroundColor(.secondary)
+                            Spacer()
+                            Text(timeString(vm.lifestyle.sleepStart)).fontWeight(.semibold)
+                        }
+                        HStack {
+                            Text("Wake Time").font(.caption).foregroundColor(.secondary)
+                            Spacer()
+                            Text(timeString(vm.lifestyle.wakeTime)).fontWeight(.semibold)
+                        }
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("Sleep Debt").font(.subheadline).fontWeight(.semibold).foregroundColor(.red)
+                                Text("Auto-filled from Health").font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Text("\(vm.lifestyle.sleepDebtHours, specifier: "%.1f") h")
+                                .font(.title3).bold().foregroundColor(.red)
+                        }
                     }
-                    Spacer()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Wake Time").font(.caption).foregroundColor(.secondary)
-                        DatePicker("", selection: Binding(
-                            get: { vm.lifestyle.wakeTime },
-                            set: { newValue in vm.updateLifestyle { data in data.wakeTime = newValue } }
-                        ), displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                    }
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Sleep Efficiency")
-                        Spacer()
-                        Text("\(Int(vm.lifestyle.sleepEfficiency))%").fontWeight(.semibold)
-                    }
-                    ProgressView(value: vm.lifestyle.sleepEfficiency / 100).tint(.blue)
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Sleep Debt").font(.subheadline).fontWeight(.semibold).foregroundColor(.red)
-                    Text("Accumulative deficit").font(.caption).foregroundColor(.secondary)
-                    Text("\(vm.lifestyle.sleepDebtHours, specifier: "%.1f") h")
-                        .font(.title3).bold().foregroundColor(.red)
                 }
             }
         case .stimulants:
@@ -640,8 +636,26 @@ struct LifestyleScreen: View {
         case .activity:
             GlassCard {
                 SectionHeader(title: "Activity", subtitle: "Protective movement", icon: "figure.walk")
-                StepperRow(title: "Activity minutes", value: binding(\.activityMinutes), step: 5, format: "%.0f min")
-                StepperRow(title: "Vigorous minutes", value: binding(\.vigorousMinutes), step: 5, format: "%.0f min")
+                if !vm.hasLifestyleData {
+                    Text("Waiting for Apple Health activity data...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Steps today")
+                            Spacer()
+                            Text("\(Int(vm.lifestyle.activityMinutes * 60))")
+                                .fontWeight(.semibold)
+                        }
+                        HStack {
+                            Text("Activity minutes")
+                            Spacer()
+                            Text("\(Int(vm.lifestyle.activityMinutes)) min")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                }
             }
         case .context:
             GlassCard {
@@ -682,24 +696,25 @@ struct LifestyleScreen: View {
     }
 
     private func summary(for category: LifestyleCategory) -> String {
+        guard vm.hasLifestyleData else { return "Waiting for Apple Health data" }
         let l = vm.lifestyle
         switch category {
         case .sleep:
             return "\(timeString(l.sleepStart)) • \(String(format: "%.1f", l.sleepDebtHours))h debt"
         case .stimulants:
-            return "\(Int(l.caffeineMgAfter2pm))mg caffeine"
+            return "Log caffeine / nicotine"
         case .activity:
             return "\(Int(l.activityMinutes * 60)) steps • \(Int(l.activityMinutes))min"
         case .context:
-            return l.isExamDay ? "Deadline today" : "Workload \(Int(l.workloadHours))h"
+            return l.isExamDay ? "Deadline today" : "Update workload"
         case .selfCare:
-            return "\(Int(l.selfCareMinutes))min today"
+            return "Track self-care time"
         case .cycle:
-            return l.hasCycleData ? l.cyclePhase.rawValue : "Not tracking"
+            return l.hasCycleData ? l.cyclePhase.rawValue : "Not tracking yet"
         case .screen:
-            return "\(String(format: "%.1f", l.daytimeScreenHours))h today"
+            return "Track screen time"
         case .diet:
-            return "\(l.waterGlasses) glasses water"
+            return "Log meals & water"
         }
     }
 
@@ -961,12 +976,13 @@ struct CheckInScreen: View {
                 Text("How are you feeling right now?")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                let moodSymbol = "face.smiling"
                 HStack(spacing: 12) {
-                    moodChip(label: "Calm", value: 0, icon: "face.smiling")
-                    moodChip(label: "Mild", value: 1, icon: "face.neutral")
-                    moodChip(label: "Moderate", value: 2, icon: "face.smiling.inverse")
-                    moodChip(label: "Anxious", value: 3, icon: "exclamationmark.triangle.fill")
-                    moodChip(label: "Very Anxious", value: 4, icon: "flame.fill")
+                    moodChip(label: "Calm", value: 0, icon: moodSymbol)
+                    moodChip(label: "Mild", value: 1, icon: moodSymbol)
+                    moodChip(label: "Moderate", value: 2, icon: moodSymbol)
+                    moodChip(label: "Anxious", value: 3, icon: moodSymbol)
+                    moodChip(label: "Very Anxious", value: 4, icon: moodSymbol)
                 }
             }
         }
@@ -1279,7 +1295,11 @@ struct WeeklyInsightsView: View {
                 VStack(spacing: 16) {
                     SectionHeader(title: "Weekly Insights", subtitle: "Trends and top contributors", icon: "chart.bar.doc.horizontal")
                     GlassCard {
-                        if vm.weekly.isEmpty {
+                        if !vm.hasHealthData {
+                            Text("Waiting for Apple Health / Watch data...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else if vm.weekly.isEmpty {
                             Text("No weekly data yet. Keep sharing check-ins and wearing your device.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -1297,7 +1317,11 @@ struct WeeklyInsightsView: View {
                     GlassCard {
                         SectionHeader(title: "Top lifestyle contributors", subtitle: "Risk impact", icon: "list.bullet")
                         let lifestyleContribs = vm.contributors.filter { $0.category == .lifestyle }
-                        if lifestyleContribs.isEmpty {
+                        if !vm.hasLifestyleData {
+                            Text("Waiting for Apple Health / Watch data...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else if lifestyleContribs.isEmpty {
                             Text("No lifestyle contributor data yet.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -1310,33 +1334,17 @@ struct WeeklyInsightsView: View {
                     GlassCard {
                         SectionHeader(title: "Top physiology contributors", subtitle: "Risk impact", icon: "waveform.path.ecg")
                         let physioContribs = vm.contributors.filter { $0.category == .physiology }
-                        if physioContribs.isEmpty {
+                        if !vm.hasPhysioData {
+                            Text("Waiting for Apple Health / Watch data...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else if physioContribs.isEmpty {
                             Text("No physiology contributor data yet.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         } else {
                             ForEach(physioContribs.prefix(3)) { item in
                                 ContributorRow(contributor: item)
-                            }
-                        }
-                    }
-                    GlassCard {
-                        SectionHeader(title: "Best interventions", subtitle: "Based on feedback", icon: "rosette")
-                        if vm.interventions.isEmpty {
-                            Text("No intervention feedback yet.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        } else {
-                            ForEach(vm.interventions.prefix(3)) { item in
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(item.title).font(.headline)
-                                        Text(item.effect).font(.caption).foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Text(item.duration).font(.caption)
-                                }
-                                .padding(.vertical, 6)
                             }
                         }
                     }
