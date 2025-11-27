@@ -11,6 +11,9 @@ struct HealthTypes {
         HKObjectType.quantityType(forIdentifier: .flightsClimbed)!,
         HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
         HKObjectType.quantityType(forIdentifier: .distanceCycling)!,
+        HKObjectType.categoryType(forIdentifier: .mindfulSession)!, // self-care sessions
+        HKObjectType.quantityType(forIdentifier: .dietaryWater)!,   // hydration
+        HKObjectType.quantityType(forIdentifier: .dietaryCaffeine)!, // stimulants
 
         // Heart
         HKObjectType.quantityType(forIdentifier: .heartRate)!,
@@ -26,9 +29,11 @@ struct HealthTypes {
         HKObjectType.quantityType(forIdentifier: .height)!,
         HKObjectType.quantityType(forIdentifier: .bodyMassIndex)!,
         HKObjectType.quantityType(forIdentifier: .bodyTemperature)!,
+        HKObjectType.quantityType(forIdentifier: .basalBodyTemperature)!,
 
         // Sleep
         HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
+        HKObjectType.categoryType(forIdentifier: .menstrualFlow)!, // cycle tracking
 
         // Workouts
         HKObjectType.workoutType(),

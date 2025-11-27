@@ -94,7 +94,6 @@ struct HomeDashboardView: View {
                     }
                     .buttonStyle(GradientButtonStyle())
 
-                    contributorsCard
                     quickActions
                     breakdown
                 }
@@ -105,24 +104,33 @@ struct HomeDashboardView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Anxiety Calculator")
-                    .font(.title2).bold()
-                Text("Your real-time wellness score")
-                    .foregroundColor(.secondary)
-                    .font(.subheadline)
-            }
-            Spacer()
-            Button {
-                showSettings = true
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.title3)
-                    .foregroundColor(.blue)
-                    .padding(10)
-                    .background(Color.white.opacity(0.8))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        VStack(spacing: 12) {
+            Image("HomeLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 88, height: 88)
+                .shadow(color: AppTheme.shadow, radius: 8, x: 0, y: 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Anxiety Calculator")
+                        .font(.title2).bold()
+                    Text("Your real-time wellness score")
+                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                }
+                Spacer()
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.title3)
+                        .foregroundColor(.blue)
+                        .padding(10)
+                        .background(Color.white.opacity(0.8))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
             }
         }
     }
@@ -158,23 +166,6 @@ struct HomeDashboardView: View {
                             .foregroundStyle(AppTheme.primaryGradient)
                         }
                         .frame(height: 90)
-                    }
-                }
-            }
-        }
-    }
-
-    private var contributorsCard: some View {
-        GlassCard {
-            SectionHeader(title: "Top Contributors Today", subtitle: "What moved your score", icon: "chart.bar.fill")
-            if vm.contributors.isEmpty {
-                Text("No data")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(vm.contributors.prefix(4)) { contributor in
-                        ContributorRow(contributor: contributor)
                     }
                 }
             }
@@ -1288,61 +1279,65 @@ struct WeeklyInsightsView: View {
                 VStack(spacing: 16) {
                     SectionHeader(title: "Weekly Insights", subtitle: "Trends and top contributors", icon: "chart.bar.doc.horizontal")
                     GlassCard {
-                        Chart(vm.weekly) { day in
-                            BarMark(
-                                x: .value("Day", day.date, unit: .day),
-                                y: .value("Score", day.score)
-                            )
-                            .foregroundStyle(AppTheme.primaryGradient)
-                        }
-                        .frame(height: 220)
-                        if let top = vm.contributors.max(by: { $0.impact < $1.impact }) {
-                            Text("\(top.name.capitalized) raised anxiety by \(Int(top.impact.rounded()))% this week.")
+                        if vm.weekly.isEmpty {
+                            Text("No weekly data yet. Keep sharing check-ins and wearing your device.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                        } else {
+                            Chart(vm.weekly) { day in
+                                BarMark(
+                                    x: .value("Day", day.date, unit: .day),
+                                    y: .value("Score", day.score)
+                                )
+                                .foregroundStyle(AppTheme.primaryGradient)
+                            }
+                            .frame(height: 220)
                         }
                     }
                     GlassCard {
                         SectionHeader(title: "Top lifestyle contributors", subtitle: "Risk impact", icon: "list.bullet")
-                        ForEach(vm.contributors.filter { $0.category == .lifestyle }.prefix(3)) { item in
-                            ContributorRow(contributor: item)
+                        let lifestyleContribs = vm.contributors.filter { $0.category == .lifestyle }
+                        if lifestyleContribs.isEmpty {
+                            Text("No lifestyle contributor data yet.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(lifestyleContribs.prefix(3)) { item in
+                                ContributorRow(contributor: item)
+                            }
                         }
                     }
                     GlassCard {
                         SectionHeader(title: "Top physiology contributors", subtitle: "Risk impact", icon: "waveform.path.ecg")
-                        ForEach(vm.contributors.filter { $0.category == .physiology }.prefix(3)) { item in
-                            ContributorRow(contributor: item)
+                        let physioContribs = vm.contributors.filter { $0.category == .physiology }
+                        if physioContribs.isEmpty {
+                            Text("No physiology contributor data yet.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(physioContribs.prefix(3)) { item in
+                                ContributorRow(contributor: item)
+                            }
                         }
                     }
                     GlassCard {
                         SectionHeader(title: "Best interventions", subtitle: "Based on feedback", icon: "rosette")
-                        ForEach(vm.interventions.prefix(3)) { item in
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(item.title).font(.headline)
-                                    Text(item.effect).font(.caption).foregroundColor(.secondary)
+                        if vm.interventions.isEmpty {
+                            Text("No intervention feedback yet.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(vm.interventions.prefix(3)) { item in
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(item.title).font(.headline)
+                                        Text(item.effect).font(.caption).foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(item.duration).font(.caption)
                                 }
-                                Spacer()
-                                Text(item.duration).font(.caption)
+                                .padding(.vertical, 6)
                             }
-                            .padding(.vertical, 6)
-                        }
-                    }
-                    GlassCard {
-                        SectionHeader(title: "Progress tracker", subtitle: "Streaks and badges", icon: "flame.fill")
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Streak").font(.headline)
-                                Text("5 days of consistent check-ins").font(.caption).foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Text("x5").font(.title2).bold().foregroundColor(.orange)
-                        }
-                        Divider()
-                        HStack {
-                            BadgeView(title: "Calm days", value: "3")
-                            BadgeView(title: "Breathwork", value: "7")
-                            BadgeView(title: "Hydration", value: "8")
                         }
                     }
                 }
@@ -1487,7 +1482,7 @@ struct SettingsView: View {
                         VStack(spacing: 4) {
                             Text("Anxiety Calculator").font(.subheadline).bold()
                             Text("Version 1.0.0").font(.caption).foregroundColor(.secondary)
-                            Text("© 2024 Wellness Labs").font(.caption2).foregroundColor(.secondary)
+                            Text("© 2025 Wellness Labs").font(.caption2).foregroundColor(.secondary)
                         }
                     }
                 }
