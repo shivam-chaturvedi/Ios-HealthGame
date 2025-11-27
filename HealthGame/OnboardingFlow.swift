@@ -53,7 +53,7 @@ private extension OnboardingFlow {
         VStack(spacing: 18) {
             LottiePlaceholder(symbol: "brain.head.profile")
                 .frame(width: 110, height: 110)
-            Text("Anxiety Calculator – V1")
+            Text("Anxiety Calculator")
                 .font(.largeTitle).bold()
             Text("Your personal wellness companion for understanding and managing anxiety in real-time.")
                 .multilineTextAlignment(.center)

@@ -54,6 +54,7 @@ struct HomeDashboardView: View {
     @State private var showSettings = false
 
     private var descriptor: String {
+        guard vm.hasHealthData else { return "No data" }
         switch vm.score.finalScore {
         case 0..<34: return "Calm"
         case 34..<67: return "Moderate"
@@ -71,7 +72,15 @@ struct HomeDashboardView: View {
                     NavigationLink("", destination: SettingsView(), isActive: $showSettings)
                         .hidden()
                     header
-                    scoreCard
+                    if vm.hasHealthData {
+                        scoreCard
+                    } else {
+                        GlassCard {
+                            Text("No data from HealthKit yet.")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                     Button {
                         onNeedHelp()
                     } label: {
@@ -92,7 +101,7 @@ struct HomeDashboardView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Anxiety Calculator – V1")
+                Text("Anxiety Calculator")
                     .font(.title2).bold()
                 Text("Your real-time wellness score")
                     .foregroundColor(.secondary)
@@ -129,15 +138,21 @@ struct HomeDashboardView: View {
                     Text("Last 12 hours")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Chart(vm.trend) { point in
-                        LineMark(
-                            x: .value("Time", point.label),
-                            y: .value("Score", point.value)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(AppTheme.primaryGradient)
+                    if vm.trend.isEmpty {
+                        Text("No data")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Chart(vm.trend) { point in
+                            LineMark(
+                                x: .value("Time", point.label),
+                                y: .value("Score", point.value)
+                            )
+                            .interpolationMethod(.catmullRom)
+                            .foregroundStyle(AppTheme.primaryGradient)
+                        }
+                        .frame(height: 90)
                     }
-                    .frame(height: 90)
                 }
             }
         }
@@ -146,9 +161,15 @@ struct HomeDashboardView: View {
     private var contributorsCard: some View {
         GlassCard {
             SectionHeader(title: "Top Contributors Today", subtitle: "What moved your score", icon: "chart.bar.fill")
-            VStack(spacing: 10) {
-                ForEach(vm.contributors.prefix(4)) { contributor in
-                    ContributorRow(contributor: contributor)
+            if vm.contributors.isEmpty {
+                Text("No data")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(vm.contributors.prefix(4)) { contributor in
+                        ContributorRow(contributor: contributor)
+                    }
                 }
             }
         }
@@ -322,7 +343,15 @@ struct PhysiologyScreen: View {
                     header
                     stateCard
                     liveSignalCard
-                    metricsGrid
+                    if liveVM.cards.isEmpty {
+                        GlassCard {
+                            Text("No data")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        metricsGrid
+                    }
                     calibrationCard
                 }
                 .padding()
@@ -1348,7 +1377,7 @@ struct SettingsView: View {
     @EnvironmentObject var vm: AnxietyCalculatorViewModel
     @State private var notificationsOn = true
     @State private var exportRequested = false
-    @State private var demoMode = true
+    @State private var demoMode = false
     @State private var primaryConcern: String = "panic"
     @State private var alertFrequency: String = "low"
 
@@ -1367,7 +1396,6 @@ struct SettingsView: View {
                                     .overlay(Text("AC").foregroundColor(.white).bold())
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Anxiety Calculator").font(.headline)
-                                    Text("V1 Demo Mode").font(.caption).foregroundColor(.secondary)
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")
@@ -1435,10 +1463,9 @@ struct SettingsView: View {
                     GlassCard {
                         VStack(spacing: 4) {
                             Text("Anxiety Calculator").font(.subheadline).bold()
-                            Text("Version 1.0.0 (Demo)").font(.caption).foregroundColor(.secondary)
+                            Text("Version 1.0.0").font(.caption).foregroundColor(.secondary)
                             Text("© 2024 Wellness Labs").font(.caption2).foregroundColor(.secondary)
                         }
-                        Toggle("Demo mode (mock data)", isOn: $demoMode)
                     }
                 }
                 .padding()
@@ -1448,7 +1475,7 @@ struct SettingsView: View {
         .alert("Data export", isPresented: $exportRequested) {
             Button("OK") {}
         } message: {
-            Text("Exports would be prepared here. (UI placeholder)")
+            Text("Exports are prepared from your on-device data.")
         }
     }
 

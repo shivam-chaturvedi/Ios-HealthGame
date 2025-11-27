@@ -6,6 +6,7 @@ import HealthKit
 @MainActor
 final class AnxietyCalculatorViewModel: ObservableObject {
     let objectWillChange = ObservableObjectPublisher()
+    @Published var hasHealthData = false
     private let healthStore = HKHealthStore()
     private let calendar = Calendar.current
     private let numberFormatter: NumberFormatter = {
@@ -97,6 +98,13 @@ final class AnxietyCalculatorViewModel: ObservableObject {
     }
 
     func recompute() {
+        if !hasHealthData {
+            let zeroScore = AnxietyScore(aps: 0, lrs: 0, cs: 0, stateEstimate: 0, finalScore: 0, confidence: .low, alpha: 0, checkinWeight: 0)
+            score = zeroScore
+            contributors = []
+            return
+        }
+
         let lrsScore = computeLifestyleScore()
         let apsScore = computeAPS()
         let checkinResult = computeCheckinScore()
@@ -561,6 +569,7 @@ extension AnxietyCalculatorViewModel {
             guard let self, let sample = samples?.first as? HKQuantitySample else { return }
             let value = sample.quantity.doubleValue(for: unit)
             DispatchQueue.main.async {
+                self.hasHealthData = true
                 assign(value)
                 self.recordRestWindow()
                 self.recompute()
@@ -577,6 +586,7 @@ extension AnxietyCalculatorViewModel {
             guard let self else { return }
             let steps = stats?.sumQuantity()?.doubleValue(for: .count()) ?? 0
             DispatchQueue.main.async {
+                self.hasHealthData = true
                 self.lifestyle.activityMinutes = steps / 100.0
                 self.physio.motionScore = min(1, steps / 10000.0)
                 self.recompute()
@@ -594,7 +604,8 @@ extension AnxietyCalculatorViewModel {
             guard let sample = samples?.first as? HKCategorySample else { return }
             let duration = sample.endDate.timeIntervalSince(sample.startDate) / 3600
             DispatchQueue.main.async {
-                self.lifestyle.sleepEfficiency = 85
+                self.hasHealthData = true
+                self.lifestyle.sleepEfficiency = 0
                 self.lifestyle.sleepDebtHours = max(0, 8 - duration)
                 self.lifestyle.sleepStart = sample.startDate
                 self.lifestyle.wakeTime = sample.endDate
