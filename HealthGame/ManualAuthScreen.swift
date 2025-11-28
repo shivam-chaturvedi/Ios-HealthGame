@@ -38,17 +38,17 @@ struct ManualAuthScreen: View {
                 .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
                 .shadow(color: AppTheme.shadow, radius: 10, x: 0, y: 10)
 
-            Text("Anxiety Calculator")
+            Text("Clinical Anxiety Console")
                 .font(.title).bold()
-            Text("Secure portal for your personalized wellness insights.")
+            Text("HIPAA-aligned access to clinically validated signals, assessments, and care team handoffs.")
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
 
-            HStack(spacing: 10) {
-                heroBadge(text: "HIPAA-grade security", icon: "lock.shield.fill", color: .blue)
-                heroBadge(text: "Clinical rigor", icon: "star.leadinghalf.filled", color: .green)
-                heroBadge(text: "Always on", icon: "clock.arrow.circlepath", color: .orange)
+            let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
+            LazyVGrid(columns: columns, spacing: 10) {
+                heroBadge(text: "HIPAA-aligned security", icon: "lock.shield.fill", color: .blue)
+                heroBadge(text: "Encrypted PHI storage", icon: "key.fill", color: .purple)
             }
         }
         .padding(22)
@@ -67,9 +67,9 @@ struct ManualAuthScreen: View {
         GlassCard(padding: 20, cornerRadius: 24) {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(isSignup ? "Create your account" : "Welcome back")
+                    Text(isSignup ? "Create your clinical account" : "Secure sign-in")
                         .font(.title3).bold()
-                    Text("Use your work email to keep your wellness progress synced across devices.")
+                    Text("Use your work email to keep your PHI in a HIPAA-safe, clinician-ready workspace.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -97,7 +97,7 @@ struct ManualAuthScreen: View {
                 HStack(spacing: 8) {
                     Image(systemName: "shield.lefthalf.fill")
                         .foregroundColor(.blue)
-                    Text("We never sell your data. Two-factor ready.")
+                    Text("Data encrypted in transit & at rest. Reviewed for HIPAA compliance.")
                         .font(.footnote)
                         .foregroundColor(.secondary)
                 }
@@ -185,17 +185,27 @@ struct ManualAuthScreen: View {
     }
 
     private func heroBadge(text: String, icon: String, color: Color) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.caption.weight(.semibold))
+                .font(.headline.weight(.semibold))
+                .frame(width: 32, height: 32)
+                .background(color.opacity(0.14))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             Text(text)
-                .font(.caption.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.leading)
+            Spacer()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(color.opacity(0.12))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: 82)
+        .background(color.opacity(0.08))
         .foregroundColor(color)
-        .clipShape(Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(color.opacity(0.35), lineWidth: 0.8)
+        )
     }
 
     private var blurOverlay: some View {
