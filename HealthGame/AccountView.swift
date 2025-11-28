@@ -6,7 +6,14 @@ struct AccountView: View {
     @AppStorage("auth_access_token") private var accessToken: String?
     @AppStorage("auth_refresh_token") private var refreshToken: String?
     @AppStorage("onboardingComplete") private var onboardingComplete = false
+    @AppStorage("notifications_enabled") private var notificationsEnabled = true
+    @AppStorage("notifications_sound") private var notificationsSound = true
+    @AppStorage("privacy_data_share") private var shareAnalytics = true
+    @AppStorage("alert_frequency") private var alertFrequency = "low"
+    @AppStorage("ai_adaptive_mode") private var aiAdaptiveMode = true
     @State private var showDeleteConfirm = false
+    @State private var showLogoutConfirm = false
+    @State private var activeSheet: AccountSheet?
     @State private var didLoad = false
 
     private var profile: Profile? { vm.profile }
@@ -58,6 +65,25 @@ struct AccountView: View {
         } message: {
             Text("This will remove your profile data from Supabase.")
         }
+        .alert("Log out?", isPresented: $showLogoutConfirm) {
+            Button("Log out", role: .destructive) {
+                Task {
+                    await SupabaseAuthService.shared.signOut()
+                    clearSession()
+                }
+            }
+            Button("Stay signed in", role: .cancel) { }
+        } message: {
+            Text("You will be signed out on this device.")
+        }
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .notifications:
+                notificationsSheet
+            case .privacy:
+                privacySheet
+            }
+        }
     }
 
     private var heroCard: some View {
@@ -81,10 +107,20 @@ struct AccountView: View {
                         .shadow(color: AppTheme.shadow, radius: 6, x: 0, y: 4)
                         .offset(x: 10, y: 8)
                 }
-                Text(profile?.fullName ?? "Your Name")
-                    .font(.title3).bold()
-                Text(profile?.email ?? "email@example.com")
-                    .foregroundColor(.secondary)
+                if vm.isLoading && profile == nil {
+                    HStack(spacing: 8) {
+                        ProgressView().scaleEffect(0.9)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Loading...").font(.title3).bold()
+                            Text("Fetching your profile").foregroundColor(.secondary)
+                        }
+                    }
+                } else {
+                    Text(profile?.fullName ?? "Loading...")
+                        .font(.title3).bold()
+                    Text(profile?.email ?? "Loading email...")
+                        .foregroundColor(.secondary)
+                }
                 HStack(spacing: 8) {
                     pill("Premium Member", color: Color.green)
                     if let days = profile?.daysActive {
@@ -139,13 +175,17 @@ struct AccountView: View {
 
     private var quickSettings: some View {
         GlassCard {
-            SectionHeader(title: "Quick Settings", subtitle: "Control alerts and theme", icon: "slider.horizontal.3")
+            SectionHeader(title: "Quick Settings", subtitle: "Control alerts and privacy", icon: "slider.horizontal.3")
             VStack(spacing: 14) {
-                settingRow(icon: "bell.badge.fill", color: .purple, title: "Notifications", subtitle: "Manage alert preferences")
+                Button { activeSheet = .notifications } label: {
+                    settingRow(icon: "bell.badge.fill", color: .purple, title: "Notifications", subtitle: "Manage alert preferences")
+                }
+                .buttonStyle(.plain)
                 Divider()
-                settingRow(icon: "shield.fill", color: .blue, title: "Privacy", subtitle: "Data and security settings")
-                Divider()
-                settingRow(icon: "moon.fill", color: .indigo, title: "Appearance", subtitle: "Theme and display")
+                Button { activeSheet = .privacy } label: {
+                    settingRow(icon: "shield.fill", color: .blue, title: "Privacy", subtitle: "Data and security settings")
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -153,10 +193,7 @@ struct AccountView: View {
     private var actionButtons: some View {
         VStack(spacing: 12) {
             Button {
-                Task {
-                    await SupabaseAuthService.shared.signOut()
-                    clearSession()
-                }
+                showLogoutConfirm = true
             } label: {
                 HStack {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
@@ -235,6 +272,7 @@ struct AccountView: View {
             Image(systemName: "chevron.right")
                 .foregroundColor(.secondary)
         }
+        .contentShape(Rectangle())
     }
 
     private func statCard(icon: String, title: String, value: String) -> some View {
@@ -264,6 +302,49 @@ struct AccountView: View {
             .background(color.opacity(0.12))
             .foregroundColor(color)
             .clipShape(Capsule())
+    }
+
+    private var notificationsSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Alerts") {
+                    Toggle("Enable notifications", isOn: $notificationsEnabled)
+                    Toggle("Sound", isOn: $notificationsSound)
+                    Picker("Frequency", selection: $alertFrequency) {
+                        Text("Low").tag("low")
+                        Text("Medium").tag("medium")
+                        Text("High").tag("high")
+                    }
+                }
+            }
+            .navigationTitle("Notifications")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { activeSheet = nil }
+                }
+            }
+        }
+    }
+
+    private var privacySheet: some View {
+        NavigationStack {
+            Form {
+                Section("Data Sharing") {
+                    Toggle("Share anonymized analytics", isOn: $shareAnalytics)
+                    Toggle("Use data for personalization", isOn: $aiAdaptiveMode)
+                }
+                Section("Security") {
+                    Label("Encrypted in transit and at rest", systemImage: "lock.shield")
+                    Label("Biometric lock supported", systemImage: "faceid")
+                }
+            }
+            .navigationTitle("Privacy & Security")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { activeSheet = nil }
+                }
+            }
+        }
     }
 
     private func toast(_ text: String) -> some View {
@@ -302,5 +383,16 @@ struct AccountView: View {
         accessToken = nil
         refreshToken = nil
         onboardingComplete = false
+    }
+}
+
+private enum AccountSheet: Identifiable {
+    case notifications, privacy
+
+    var id: String {
+        switch self {
+        case .notifications: return "notifications"
+        case .privacy: return "privacy"
+        }
     }
 }

@@ -4,7 +4,6 @@ import SwiftUI
 import Combine
 
 final class PhysioLiveViewModel: ObservableObject {
-    let objectWillChange = ObservableObjectPublisher()
 
     enum Signal: String, CaseIterable {
         case hr = "HR"

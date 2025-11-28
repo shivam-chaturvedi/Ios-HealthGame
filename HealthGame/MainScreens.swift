@@ -78,6 +78,8 @@ struct HomeDashboardView: View {
                     NavigationLink("", destination: SettingsView(), isActive: $showSettings)
                         .hidden()
                     header
+                    refreshRow
+                    cloudSyncRow
                     if vm.hasHealthData {
                         scoreCard
                     } else {
@@ -130,6 +132,62 @@ struct HomeDashboardView: View {
                         .padding(10)
                         .background(Color.white.opacity(0.8))
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+            }
+        }
+    }
+
+    private var refreshRow: some View {
+        GlassCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Live data")
+                        .font(.headline)
+                    Text("Pull latest from watch & HealthKit")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Button {
+                    vm.simulateLiveTick()
+                } label: {
+                    Image(systemName: "arrow.clockwise.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.blue)
+                        .padding(10)
+                        .background(Color.blue.opacity(0.12))
+                        .clipShape(Circle())
+                }
+            }
+        }
+    }
+
+    private var cloudSyncRow: some View {
+        GlassCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Cloud sync")
+                        .font(.headline)
+                    if let last = vm.lastCloudSync {
+                        Text("Last synced \(last, style: .time)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Not synced yet")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+                Button {
+                    Task { await vm.syncWithCloud() }
+                } label: {
+                    Label("Sync now", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.footnote.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.blue.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
             }
         }
@@ -330,7 +388,7 @@ private struct AnxietyRing: View {
 struct PhysiologyScreen: View {
     @EnvironmentObject var vm: AnxietyCalculatorViewModel
     @StateObject private var liveVM = PhysioLiveViewModel()
-    private let timer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
     @State private var showSettings = false
 
     var body: some View {
@@ -359,11 +417,20 @@ struct PhysiologyScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showSettings = true
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .foregroundColor(.blue)
+                HStack(spacing: 12) {
+                    Button {
+                        liveVM.refreshAll()
+                        vm.simulateLiveTick()
+                    } label: {
+                        Image(systemName: "arrow.clockwise.circle.fill")
+                            .foregroundColor(.blue)
+                    }
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .foregroundColor(.blue)
+                    }
                 }
             }
         }
@@ -547,7 +614,9 @@ struct LifestyleScreen: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Lifestyle").font(.title2).bold()
-                Text("Track daily habits").foregroundColor(.secondary)
+                Text("Sync with Health or log manually — everything counts.")
+                    .foregroundColor(.secondary)
+                    .font(.subheadline)
             }
         }
     }
@@ -569,13 +638,10 @@ struct LifestyleScreen: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
-                    if vm.hasLifestyleData {
-                        Label("Apple Health", systemImage: "heart.fill")
-                            .labelStyle(.titleAndIcon)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("Waiting for Apple Health")
+                    HStack(spacing: 6) {
+                        Image(systemName: vm.hasLifestyleData ? "checkmark.circle.fill" : "pencil.and.outline")
+                            .foregroundColor(vm.hasLifestyleData ? .green : .secondary)
+                        Text(vm.hasLifestyleData ? "Data captured" : "Tap to log")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -598,32 +664,32 @@ struct LifestyleScreen: View {
         case .sleep:
             GlassCard {
                 SectionHeader(title: "Sleep Tracking", subtitle: "Schedule & debt", icon: "moon.zzz.fill")
-                if !vm.hasLifestyleData {
-                    Text("Waiting for Apple Health sleep data...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("Sleep Time").font(.caption).foregroundColor(.secondary)
-                            Spacer()
-                            Text(timeString(vm.lifestyle.sleepStart)).fontWeight(.semibold)
-                        }
-                        HStack {
-                            Text("Wake Time").font(.caption).foregroundColor(.secondary)
-                            Spacer()
-                            Text(timeString(vm.lifestyle.wakeTime)).fontWeight(.semibold)
-                        }
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Sleep Debt").font(.subheadline).fontWeight(.semibold).foregroundColor(.red)
-                                Text("Auto-filled from Health").font(.caption).foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Text("\(vm.lifestyle.sleepDebtHours, specifier: "%.1f") h")
-                                .font(.title3).bold().foregroundColor(.red)
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 12) {
+                    DatePicker("Sleep time", selection: binding(\.sleepStart), displayedComponents: [.hourAndMinute])
+                        .datePickerStyle(.compact)
+                    DatePicker("Wake time", selection: binding(\.wakeTime), displayedComponents: [.hourAndMinute])
+                        .datePickerStyle(.compact)
+                    StepperRow(
+                        title: "Sleep debt",
+                        subtitle: "Hours short of your 8h target",
+                        value: binding(\.sleepDebtHours),
+                        step: 0.5,
+                        format: "%.1f h"
+                    )
+                    StepperRow(
+                        title: "Bedtime shift",
+                        subtitle: "Deviation vs usual schedule",
+                        value: binding(\.bedtimeShiftMinutes),
+                        step: 15,
+                        format: "%.0f min"
+                    )
+                    StepperRow(
+                        title: "Sleep efficiency",
+                        subtitle: "Aim for 85%+",
+                        value: binding(\.sleepEfficiency),
+                        step: 5,
+                        format: "%.0f %", minValue: 0, maxValue: 100
+                    )
                 }
             }
         case .stimulants:
@@ -636,25 +702,30 @@ struct LifestyleScreen: View {
         case .activity:
             GlassCard {
                 SectionHeader(title: "Activity", subtitle: "Protective movement", icon: "figure.walk")
-                if !vm.hasLifestyleData {
-                    Text("Waiting for Apple Health activity data...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Steps today")
-                            Spacer()
-                            Text("\(Int(vm.lifestyle.activityMinutes * 60))")
-                                .fontWeight(.semibold)
-                        }
-                        HStack {
-                            Text("Activity minutes")
-                            Spacer()
-                            Text("\(Int(vm.lifestyle.activityMinutes)) min")
-                                .fontWeight(.semibold)
-                        }
+                VStack(alignment: .leading, spacing: 12) {
+                    StepperRow(
+                        title: "Active minutes",
+                        subtitle: "Walking, cycling, light movement",
+                        value: binding(\.activityMinutes),
+                        step: 5,
+                        format: "%.0f min"
+                    )
+                    StepperRow(
+                        title: "Vigorous minutes",
+                        subtitle: "Runs, HIIT, sports",
+                        value: binding(\.vigorousMinutes),
+                        step: 5,
+                        format: "%.0f min"
+                    )
+                    HStack {
+                        Text("Estimated steps")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("\(Int(vm.lifestyle.activityMinutes * 100)) steps")
+                            .font(.caption.weight(.semibold))
                     }
+                    .padding(.top, 2)
                 }
             }
         case .context:
@@ -696,25 +767,32 @@ struct LifestyleScreen: View {
     }
 
     private func summary(for category: LifestyleCategory) -> String {
-        guard vm.hasLifestyleData else { return "Waiting for Apple Health data" }
+        if !vm.hasLifestyleData {
+            return "Tap to log your day"
+        }
         let l = vm.lifestyle
         switch category {
         case .sleep:
-            return "\(timeString(l.sleepStart)) • \(String(format: "%.1f", l.sleepDebtHours))h debt"
+            return "\(timeString(l.sleepStart))–\(timeString(l.wakeTime)) • \(String(format: "%.1f", l.sleepDebtHours))h debt"
         case .stimulants:
-            return "Log caffeine / nicotine"
+            var parts: [String] = []
+            if l.caffeineMgAfter2pm > 0 { parts.append("\(Int(l.caffeineMgAfter2pm))mg caffeine") }
+            if l.alcoholUnitsAfter8pm > 0 { parts.append("\(l.alcoholUnitsAfter8pm) after 8PM") }
+            if l.nicotine { parts.append("nicotine") }
+            return parts.isEmpty ? "No stimulants logged" : parts.joined(separator: " • ")
         case .activity:
-            return "\(Int(l.activityMinutes * 60)) steps • \(Int(l.activityMinutes))min"
+            return "\(Int(l.activityMinutes)) min active • \(Int(l.vigorousMinutes)) min vigorous"
         case .context:
-            return l.isExamDay ? "Deadline today" : "Update workload"
+            let hours = Int(l.workloadHours)
+            return l.isExamDay ? "Deadline day • \(hours)h focus" : "\(hours)h workload"
         case .selfCare:
-            return "Track self-care time"
+            return "\(Int(l.selfCareMinutes)) min self-care"
         case .cycle:
             return l.hasCycleData ? l.cyclePhase.rawValue : "Not tracking yet"
         case .screen:
-            return "Track screen time"
+            return "\(Int(l.post11pmScreenMinutes))m late • \(String(format: "%.1f", l.daytimeScreenHours))h day"
         case .diet:
-            return "Log meals & water"
+            return "\(l.skippedMeals) skipped • \(l.sugaryItems) sugary • \(l.waterGlasses) water"
         }
     }
 
@@ -790,46 +868,59 @@ private enum LifestyleCategory: CaseIterable {
 
 private struct StepperRow: View {
     var title: String
+    var subtitle: String? = nil
     @Binding var value: Double
     var step: Double
     var format: String
+    var minValue: Double = 0
+    var maxValue: Double? = nil
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.subheadline)
-                Text(subtitle).font(.caption).foregroundColor(.secondary)
+                if let resolvedSubtitle {
+                    Text(resolvedSubtitle).font(.caption).foregroundColor(.secondary)
+                }
             }
             Spacer()
             HStack(spacing: 12) {
                 Button {
-                    value = max(0, value - step)
+                    value = max(minValue, value - step)
                 } label: {
                     Image(systemName: "minus.circle.fill")
                         .foregroundColor(.secondary)
                         .font(.title3)
                 }
+                .buttonStyle(.plain)
                 Text(String(format: format, value))
                     .font(.headline)
                 Button {
-                    value += step
+                    let newValue = value + step
+                    if let maxValue {
+                        value = min(maxValue, newValue)
+                    } else {
+                        value = newValue
+                    }
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .foregroundColor(.blue)
                         .font(.title3)
                 }
+                .buttonStyle(.plain)
             }
         }
     }
 
-    private var subtitle: String {
+    private var resolvedSubtitle: String? {
+        if let subtitle { return subtitle }
         switch title {
         case "Caffeine after 2PM":
             return "-1 cup coffee ≈ 100mg"
         case "After 11PM":
             return "Min of late night use"
         default:
-            return ""
+            return nil
         }
     }
 }
@@ -1233,53 +1324,327 @@ struct InterventionsScreen: View {
 private struct InterventionDetailSheet: View {
     var item: Intervention
     @Environment(\.dismiss) private var dismiss
+    @State private var guide: InterventionGuide = .empty
+    @State private var currentStepIndex: Int = 0
+    @State private var secondsRemaining: Int = 0
+    @State private var isRunning = false
+    @State private var hasCompletedCycle = false
+
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 16) {
-            HStack {
-                Spacer()
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.headline)
-                        .padding(10)
-                        .background(Color.black.opacity(0.05))
-                        .clipShape(Circle())
-                }
-            }
-            .padding(.horizontal)
-
-            VStack(spacing: 10) {
-                Text(item.title)
-                    .font(.title3).bold()
-                Text(item.effect)
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.secondary)
+            topBar
+            intro
+            if guide.steps.isEmpty {
+                Text("Guide not available for this exercise yet.")
                     .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                breathCoach
+                stepList
+                controls
             }
-
-            Circle()
-                .fill(Color.blue.opacity(0.2))
-                .frame(width: 140, height: 140)
-                .overlay(
-                    Circle()
-                        .fill(Color.blue.opacity(0.4))
-                        .frame(width: 110, height: 110)
-                        .overlay(
-                            Text("Start")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                        )
-                )
-            Text("\(item.minutes):00 remaining")
-                .foregroundColor(.secondary)
-                .font(.caption)
-
             Spacer()
         }
         .padding(.vertical, 24)
         .background(AppTheme.background)
+        .onAppear {
+            configureGuide()
+        }
+        .onReceive(timer) { _ in
+            guard isRunning, currentStep != nil else { return }
+            tick()
+        }
+    }
+
+    private var topBar: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.title3).bold()
+                Text(item.subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.headline)
+                    .padding(10)
+                    .background(Color.black.opacity(0.05))
+                    .clipShape(Circle())
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private var intro: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(guide.summary)
+                    .font(.subheadline)
+                Text(item.effect)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private var breathCoach: some View {
+        let progress = guide.totalSeconds > 0 ? Double(elapsedSeconds) / Double(guide.totalSeconds) : 0
+        return VStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .stroke(Color.blue.opacity(0.15), lineWidth: 16)
+                    .frame(width: 200, height: 200)
+                Circle()
+                    .trim(from: 0, to: min(1, progress))
+                    .stroke(AppTheme.primaryGradient, style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 200, height: 200)
+                VStack(spacing: 6) {
+                    Text(currentStep?.instruction ?? "Ready")
+                        .font(.title3).bold()
+                    Text("\(secondsRemaining)s")
+                        .font(.largeTitle.weight(.semibold))
+                    if let cue = currentStep?.cue {
+                        Text(cue)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            Text(guide.title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .onTapGesture {
+            if isRunning {
+                isRunning = false
+            } else {
+                startGuide()
+            }
+        }
+    }
+
+    private var stepList: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Flow")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+            ForEach(Array(guide.steps.enumerated()), id: \.offset) { index, step in
+                GlassCard {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(step.instruction)
+                                .font(.subheadline).bold()
+                            Text(step.cue)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Text("\(step.duration)s")
+                            .font(.caption.weight(.semibold))
+                            .padding(8)
+                            .background(index == currentStepIndex ? Color.blue.opacity(0.12) : Color.black.opacity(0.04))
+                            .clipShape(Capsule())
+                    }
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(index == currentStepIndex ? Color.blue.opacity(0.6) : Color.clear, lineWidth: 1)
+                )
+            }
+        }
+    }
+
+    private var controls: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                Button {
+                    if isRunning {
+                        isRunning = false
+                    } else {
+                        startGuide()
+                    }
+                } label: {
+                    Label(isRunning ? "Pause" : "Start", systemImage: isRunning ? "pause.fill" : "play.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(GradientButtonStyle())
+
+                Button {
+                    resetGuide()
+                } label: {
+                    Label("Reset", systemImage: "arrow.counterclockwise")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+            if hasCompletedCycle {
+                Text("Cycle complete — restart to repeat")
+                    .font(.caption)
+                    .foregroundColor(.green)
+            }
+            Text("Tap Start or the circle to play/pause the sequence.")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal)
+        .padding(.top, 4)
+    }
+
+    private var currentStep: InterventionGuide.Step? {
+        guard guide.steps.indices.contains(currentStepIndex) else { return nil }
+        return guide.steps[currentStepIndex]
+    }
+
+    private var elapsedSeconds: Int {
+        let completedBefore = guide.steps.prefix(currentStepIndex).reduce(0) { $0 + $1.duration }
+        let spentInStep = (currentStep?.duration ?? 0) - secondsRemaining
+        return max(0, completedBefore + max(0, spentInStep))
+    }
+
+    private func configureGuide() {
+        guide = InterventionGuide.make(for: item)
+        resetGuide()
+    }
+
+    private func startGuide() {
+        guard !guide.steps.isEmpty else { return }
+        hasCompletedCycle = false
+        isRunning = true
+    }
+
+    private func resetGuide() {
+        currentStepIndex = 0
+        secondsRemaining = guide.steps.first?.duration ?? 0
+        isRunning = false
+        hasCompletedCycle = false
+    }
+
+    private func tick() {
+        guard !guide.steps.isEmpty else { return }
+        if secondsRemaining > 0 {
+            secondsRemaining -= 1
+            return
+        }
+        advanceStep()
+    }
+
+    private func advanceStep() {
+        if currentStepIndex + 1 < guide.steps.count {
+            currentStepIndex += 1
+            secondsRemaining = guide.steps[currentStepIndex].duration
+        } else {
+            isRunning = false
+            hasCompletedCycle = true
+            currentStepIndex = 0
+            secondsRemaining = guide.steps.first?.duration ?? 0
+        }
+    }
+}
+
+private struct InterventionGuide {
+    struct Step: Identifiable {
+        let id = UUID()
+        let instruction: String
+        let duration: Int
+        let cue: String
+    }
+
+    var title: String
+    var summary: String
+    var steps: [Step]
+
+    var totalSeconds: Int {
+        steps.reduce(0) { $0 + $1.duration }
+    }
+
+    static let empty = InterventionGuide(title: "", summary: "", steps: [])
+
+    static func make(for item: Intervention) -> InterventionGuide {
+        switch item.title {
+        case _ where item.title.contains("4-7-8"):
+            return InterventionGuide(
+                title: "4-7-8 Breathing",
+                summary: "Inhale quietly for 4s, hold for 7s, slow exhale for 8s.",
+                steps: [
+                    .init(instruction: "Inhale", duration: 4, cue: "Belly expands"),
+                    .init(instruction: "Hold", duration: 7, cue: "Keep shoulders relaxed"),
+                    .init(instruction: "Exhale", duration: 8, cue: "Pursed lips, slow release")
+                ]
+            )
+        case _ where item.title.contains("Box"):
+            return InterventionGuide(
+                title: "Box Breathing",
+                summary: "Steady 4-4-4-4 rhythm to reset your nervous system.",
+                steps: [
+                    .init(instruction: "Inhale", duration: 4, cue: "Count 1-2-3-4"),
+                    .init(instruction: "Hold", duration: 4, cue: "Keep chest soft"),
+                    .init(instruction: "Exhale", duration: 4, cue: "Slow and even"),
+                    .init(instruction: "Hold", duration: 4, cue: "Stay still")
+                ]
+            )
+        case _ where item.title.contains("5-4-3-2-1"):
+            return InterventionGuide(
+                title: "Grounding (5-4-3-2-1)",
+                summary: "Name five senses items to anchor attention.",
+                steps: [
+                    .init(instruction: "5 things you see", duration: 20, cue: "Scan the room"),
+                    .init(instruction: "4 things you feel", duration: 20, cue: "Feet on the floor"),
+                    .init(instruction: "3 things you hear", duration: 20, cue: "Near and far sounds"),
+                    .init(instruction: "2 things you smell", duration: 20, cue: "Deep breaths"),
+                    .init(instruction: "1 thing you taste", duration: 20, cue: "Notice lingering taste")
+                ]
+            )
+        case _ where item.title.contains("Walk"):
+            return InterventionGuide(
+                title: "Short Walk",
+                summary: "Reset with gentle movement; breathe through the nose.",
+                steps: [
+                    .init(instruction: "Stand & stretch", duration: 20, cue: "Roll shoulders"),
+                    .init(instruction: "Easy pace", duration: 60, cue: "Nose breathing"),
+                    .init(instruction: "Notice surroundings", duration: 60, cue: "Name colors/shapes")
+                ]
+            )
+        case _ where item.title.contains("Anxiety Dump"):
+            return InterventionGuide(
+                title: "Anxiety Dump",
+                summary: "Write without editing to clear mental backlog.",
+                steps: [
+                    .init(instruction: "Write freely", duration: 90, cue: "No filtering"),
+                    .init(instruction: "Circle priorities", duration: 40, cue: "Pick 1-2 items"),
+                    .init(instruction: "Choose one action", duration: 40, cue: "Small next step")
+                ]
+            )
+        case _ where item.title.contains("Soundscape"):
+            return InterventionGuide(
+                title: "Calming Soundscape",
+                summary: "Low tempo audio to downshift arousal.",
+                steps: [
+                    .init(instruction: "Press play", duration: 15, cue: "Volume low"),
+                    .init(instruction: "Close eyes", duration: 45, cue: "Slow exhales"),
+                    .init(instruction: "Notice breath", duration: 60, cue: "Match beat")
+                ]
+            )
+        default:
+            return InterventionGuide(
+                title: item.title,
+                summary: "Follow the prompts to complete this exercise.",
+                steps: [
+                    .init(instruction: "Start", duration: 30, cue: "Stay present"),
+                    .init(instruction: "Finish", duration: 30, cue: "Notice how you feel")
+                ]
+            )
+        }
     }
 }
 
@@ -1370,23 +1735,6 @@ struct WeeklyInsightsView: View {
     }
 }
 
-private struct BadgeView: View {
-    var title: String
-    var value: String
-
-    var body: some View {
-        VStack {
-            Text(value)
-                .font(.headline)
-                .foregroundColor(.blue)
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
 // MARK: - Settings
 struct SettingsView: View {
     @EnvironmentObject var vm: AnxietyCalculatorViewModel
@@ -1394,10 +1742,15 @@ struct SettingsView: View {
     @AppStorage("onboardingComplete") private var onboardingComplete = false
     @AppStorage("auth_access_token") private var accessToken: String?
     @AppStorage("auth_refresh_token") private var refreshToken: String?
-    @State private var notificationsOn = true
     @State private var exportRequested = false
     @State private var primaryConcern: String = "panic"
-    @State private var alertFrequency: String = "low"
+    @AppStorage("alert_frequency") private var alertFrequency: String = "low"
+    @State private var watchConnected = true
+    @State private var shareAnalytics = true
+    @State private var personalizeData = true
+    @State private var storeOnDeviceOnly = false
+    @State private var activeSheet: SettingsSheet?
+    @State private var showLogoutConfirm = false
 
     var body: some View {
         ZStack {
@@ -1414,10 +1767,9 @@ struct SettingsView: View {
                                     .overlay(Text("AC").foregroundColor(.white).bold())
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Anxiety Calculator").font(.headline)
+                                    Text("Version 1.0.0").font(.caption).foregroundColor(.secondary)
                                 }
                                 Spacer()
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.secondary)
                             }
                         }
                     }
@@ -1467,22 +1819,28 @@ struct SettingsView: View {
                     }
 
                     GlassCard {
-                        settingsRow(icon: "applewatch", title: "Connected Devices", subtitle: "Apple Watch connected")
+                        settingsRow(
+                            icon: "applewatch",
+                            title: "Connected Devices",
+                            subtitle: watchConnected ? "Apple Watch connected" : "No device connected"
+                        ) {
+                            activeSheet = .devices
+                        }
                         Divider()
                         settingsRow(icon: "arrow.down.doc", title: "Export Data", subtitle: "Download your history") {
                             exportRequested = true
                         }
                         Divider()
-                        settingsRow(icon: "lock.shield", title: "Privacy & Security", subtitle: "Manage your data")
+                        settingsRow(icon: "lock.shield", title: "Privacy & Security", subtitle: "Manage your data") {
+                            activeSheet = .privacy
+                        }
                         Divider()
-                        settingsRow(icon: "questionmark.circle", title: "Help & Support", subtitle: "FAQs and contact")
+                        settingsRow(icon: "questionmark.circle", title: "Help & Support", subtitle: "FAQs and contact") {
+                            activeSheet = .support
+                        }
                         Divider()
                         settingsRow(icon: "rectangle.portrait.and.arrow.right", title: "Log out", subtitle: "Sign out") {
-                            googleLoggedIn = false
-                            onboardingComplete = false
-                            accessToken = nil
-                            refreshToken = nil
-                            Task { await SupabaseAuthService.shared.signOut() }
+                            showLogoutConfirm = true
                         }
                     }
 
@@ -1502,6 +1860,121 @@ struct SettingsView: View {
             Button("OK") {}
         } message: {
             Text("Exports are prepared from your on-device data.")
+        }
+        .alert("Log out?", isPresented: $showLogoutConfirm) {
+            Button("Log out", role: .destructive) {
+                googleLoggedIn = false
+                onboardingComplete = false
+                accessToken = nil
+                refreshToken = nil
+                Task { await SupabaseAuthService.shared.signOut() }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You will be signed out on this device.")
+        }
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .devices:
+                deviceSheet
+            case .privacy:
+                privacySheet
+            case .support:
+                supportSheet
+            }
+        }
+    }
+
+    private var deviceSheet: some View {
+        NavigationStack {
+            List {
+                Section("Connected Device") {
+                    HStack {
+                        Image(systemName: "applewatch")
+                            .foregroundColor(.blue)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Apple Watch")
+                                .font(.headline)
+                            Text(watchConnected ? "Live sync enabled" : "Not connected")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Circle()
+                            .fill(watchConnected ? Color.green : Color.red.opacity(0.7))
+                            .frame(width: 10, height: 10)
+                    }
+                    Button(watchConnected ? "Disconnect" : "Connect") {
+                        watchConnected.toggle()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+
+                Section("Manage") {
+                    Button("Pair new device") { }
+                    Button("Reconnect manually") { }
+                    Button("Forget all devices", role: .destructive) { watchConnected = false }
+                }
+
+                Section("Data Sources") {
+                    Label("Heart rate, HRV, RR", systemImage: "heart.fill")
+                    Label("Motion & activity", systemImage: "figure.run")
+                    Label("Notifications & interventions", systemImage: "bell.badge.fill")
+                }
+            }
+            .navigationTitle("Connected Devices")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { activeSheet = nil }
+                }
+            }
+        }
+    }
+
+    private var privacySheet: some View {
+        NavigationStack {
+            List {
+                Section("Data Controls") {
+                    Toggle("Share check-in analytics", isOn: $shareAnalytics)
+                    Toggle("Use data for personalization", isOn: $personalizeData)
+                    Toggle("Store data on device only", isOn: $storeOnDeviceOnly)
+                }
+                Section("Security") {
+                    Label("Encrypted in transit and at rest", systemImage: "lock.shield")
+                    Label("Biometric lock supported", systemImage: "faceid")
+                }
+            }
+            .navigationTitle("Privacy & Security")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { activeSheet = nil }
+                }
+            }
+        }
+    }
+
+    private var supportSheet: some View {
+        NavigationStack {
+            List {
+                Section("Contact") {
+                    Label("support@wellnesslabs.app", systemImage: "envelope")
+                    Label("Live chat (Mon–Fri)", systemImage: "message")
+                }
+                Section("Resources") {
+                    Label("FAQ & troubleshooting", systemImage: "questionmark.circle")
+                    Label("Emergency resources", systemImage: "phone.fill")
+                }
+                Section("Feedback") {
+                    Button("Report a bug") { }
+                    Button("Request a feature") { }
+                }
+            }
+            .navigationTitle("Help & Support")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { activeSheet = nil }
+                }
+            }
         }
     }
 
@@ -1547,6 +2020,17 @@ struct SettingsView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             action?()
+        }
+    }
+}
+
+private enum SettingsSheet: Identifiable {
+    case devices, privacy, support
+    var id: String {
+        switch self {
+        case .devices: return "devices"
+        case .privacy: return "privacy"
+        case .support: return "support"
         }
     }
 }

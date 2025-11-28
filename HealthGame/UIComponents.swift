@@ -16,6 +16,15 @@ struct AppTheme {
         endPoint: .bottomTrailing
     )
 
+    static let darkBackground = LinearGradient(
+        colors: [
+            Color.black,
+            Color(red: 0.06, green: 0.07, blue: 0.09)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
     static let glassBackground = Color.white.opacity(0.55)
     static let shadow = Color.black.opacity(0.06)
 }
@@ -125,19 +134,28 @@ struct ConfidenceBadgeView: View {
 }
 
 struct AppBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            (colorScheme == .dark ? AppTheme.darkBackground : AppTheme.background)
+                .ignoresSafeArea()
             Circle()
-                .fill(Color.blue.opacity(0.08))
+                .fill((colorScheme == .dark ? Color.blue.opacity(0.25) : Color.blue.opacity(0.08)))
                 .frame(width: 420)
-                .blur(radius: 90)
+                .blur(radius: colorScheme == .dark ? 140 : 90)
                 .offset(x: -120, y: -240)
             Circle()
-                .fill(Color.green.opacity(0.08))
+                .fill((colorScheme == .dark ? Color.mint.opacity(0.22) : Color.green.opacity(0.08)))
                 .frame(width: 380)
-                .blur(radius: 90)
+                .blur(radius: colorScheme == .dark ? 140 : 90)
                 .offset(x: 160, y: 200)
+            if colorScheme == .dark {
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1.5)
+                    .frame(width: 520)
+                    .blur(radius: 2)
+            }
         }
     }
 }

@@ -2,13 +2,15 @@ import Foundation
 import SwiftUI
 import Combine
 import HealthKit
+import Supabase
 
 @MainActor
 final class AnxietyCalculatorViewModel: ObservableObject {
-    let objectWillChange = ObservableObjectPublisher()
     @Published var hasHealthData = false
     @Published var hasPhysioData = false
     @Published var hasLifestyleData = false
+    @Published var userId: UUID?
+    @Published var lastCloudSync: Date?
     private let healthStore = HKHealthStore()
     private let calendar = Calendar.current
     private let numberFormatter: NumberFormatter = {
@@ -130,25 +132,138 @@ final class AnxietyCalculatorViewModel: ObservableObject {
     }
 
     func addAnxietyMoment(note: String, intensity: Double) {
-        checkin.anxietyMoments.insert(.init(note: note, timestamp: Date(), intensity: intensity), at: 0)
+        var updated = checkin
+        updated.anxietyMoments.insert(.init(note: note, timestamp: Date(), intensity: intensity), at: 0)
+        checkin = updated
         recompute()
+        Task { await saveMomentToRemote(updated.anxietyMoments.first) }
     }
 
     func updateCheckin(gad2: Int, mood: Int) {
-        checkin.gad2Score = gad2
-        checkin.gadUpdated = Date()
-        checkin.mood = mood
-        checkin.moodUpdated = Date()
+        var updated = checkin
+        updated.gad2Score = gad2
+        updated.gadUpdated = Date()
+        updated.mood = mood
+        updated.moodUpdated = Date()
+        checkin = updated
         recompute()
+        Task { await saveCheckinToRemote() }
     }
 
     func updateLifestyle(_ updates: (inout LifestyleData) -> Void) {
-        updates(&lifestyle)
+        var updated = lifestyle
+        updates(&updated)
+        lifestyle = updated
+        hasLifestyleData = true
+        hasHealthData = true
         recompute()
     }
 
     func simulateLiveTick() {
         fetchFromHealthKit()
+    }
+
+    func refreshUserContext() async {
+        do {
+            let user = try await SupabaseAuthService.shared.currentUser()
+            await MainActor.run {
+                self.userId = user.id
+            }
+            await loadRemoteCheckins()
+            await loadRemoteState()
+        } catch {
+            // leave userId nil
+        }
+    }
+
+    private func loadRemoteCheckins() async {
+        guard let userId else { return }
+        if let latest = await SupabaseCheckinService.shared.fetchLatestCheckin(userId: userId) {
+            await MainActor.run {
+                self.checkin.gad2Score = latest.gad2Score
+                self.checkin.gadUpdated = latest.gadUpdated
+                self.checkin.mood = latest.mood
+                self.checkin.moodUpdated = latest.moodUpdated
+            }
+        }
+        let moments = await SupabaseCheckinService.shared.fetchRecentMoments(userId: userId)
+        if !moments.isEmpty {
+            await MainActor.run {
+                self.checkin.anxietyMoments = moments
+            }
+        }
+        await MainActor.run {
+            self.recompute()
+        }
+    }
+
+    private func loadRemoteState() async {
+        guard let userId else { return }
+        if let remotePhysio = await SupabaseSyncService.shared.fetchPhysio(userId: userId) {
+            await MainActor.run {
+                self.physio.hr = remotePhysio.hr
+                self.physio.hrv = remotePhysio.hrv
+                self.physio.rr = remotePhysio.rr
+                self.physio.edaPeaksPerMin = remotePhysio.eda
+                self.physio.skinTempDelta = remotePhysio.temp
+                self.physio.motionScore = remotePhysio.motionScore
+                self.physio.isExercising = remotePhysio.isExercising
+                self.hasPhysioData = true
+                if let updated = remotePhysio.updatedAt {
+                    self.lastCloudSync = updated
+                }
+            }
+        }
+        if let remoteLifestyle = await SupabaseSyncService.shared.fetchLifestyle(userId: userId) {
+            await MainActor.run {
+                self.lifestyle.sleepStart = remoteLifestyle.sleepStart
+                self.lifestyle.wakeTime = remoteLifestyle.wakeTime
+                self.lifestyle.sleepDebtHours = remoteLifestyle.sleepDebtHours
+                self.lifestyle.caffeineMgAfter2pm = remoteLifestyle.caffeineMgAfter2pm
+                self.lifestyle.nicotine = remoteLifestyle.nicotine
+                self.lifestyle.alcoholUnitsAfter8pm = remoteLifestyle.alcoholUnitsAfter8pm
+                self.lifestyle.activityMinutes = remoteLifestyle.activityMinutes
+                self.lifestyle.vigorousMinutes = remoteLifestyle.vigorousMinutes
+                self.lifestyle.workloadHours = remoteLifestyle.workloadHours
+                self.lifestyle.isExamDay = remoteLifestyle.isExamDay
+                self.lifestyle.selfCareMinutes = remoteLifestyle.selfCareMinutes
+                self.lifestyle.hasCycleData = remoteLifestyle.hasCycleData
+                self.lifestyle.cyclePhase = CyclePhase(rawValue: remoteLifestyle.cyclePhase) ?? .none
+                self.lifestyle.post11pmScreenMinutes = remoteLifestyle.post11pmScreenMinutes
+                self.lifestyle.daytimeScreenHours = remoteLifestyle.daytimeScreenHours
+                self.lifestyle.skippedMeals = remoteLifestyle.skippedMeals
+                self.lifestyle.sugaryItems = remoteLifestyle.sugaryItems
+                self.lifestyle.waterGlasses = remoteLifestyle.waterGlasses
+                self.hasLifestyleData = true
+                if let updated = remoteLifestyle.updatedAt {
+                    self.lastCloudSync = updated
+                }
+            }
+        }
+        await MainActor.run {
+            self.recompute()
+        }
+    }
+
+    private func saveCheckinToRemote() async {
+        guard let userId else { return }
+        await SupabaseCheckinService.shared.saveCheckin(userId: userId, data: checkin)
+    }
+
+    private func saveMomentToRemote(_ moment: AnxietyMoment?) async {
+        guard let userId, let moment else { return }
+        await SupabaseCheckinService.shared.saveMoment(userId: userId, moment: moment)
+    }
+
+    func syncWithCloud() async {
+        guard let userId else { return }
+        await SupabaseSyncService.shared.upsertPhysio(userId: userId, physio: physio)
+        await SupabaseSyncService.shared.upsertLifestyle(userId: userId, lifestyle: lifestyle)
+        await saveCheckinToRemote()
+        await saveMomentToRemote(checkin.anxietyMoments.first)
+        await MainActor.run {
+            self.lastCloudSync = Date()
+        }
     }
 }
 

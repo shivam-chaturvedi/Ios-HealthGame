@@ -21,6 +21,7 @@ final class SupabaseAuthService {
         if signup, let session = try await signUp(email: email, password: password) {
             return session
         }
+        
         return try await signIn(email: email, password: password)
     }
 
